@@ -1,6 +1,6 @@
 ---
 title: Twikoo 评论的图床配置
-description: 免费自建 EasyImage 图床，不止用于 Twikoo. 使用谷歌免费云服务器，免数据库，免备案。
+description: 免费自建 EasyImage 图床，不止用于 Twikoo. 使用谷歌免费云服务器，免数据库，免服务器备案。
 date: 2026-08-10 12:00:00
 updated: 2026-08-10 12:45:00
 image: https://gitee.com/hcbug/picture1/raw/master/20260810223120526.webp

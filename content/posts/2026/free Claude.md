@@ -3,7 +3,7 @@ title: 免费本地部署开源 AI 接入 Claude Desktop
 description: 使用 Ollama 本地模型和 CC Switch 路由，实现Claude接入本地模型，离线使用。
 date: 2026-08-04 12:50:40
 updated: 2026-08-06 14:01:00
-image: https://gitee.com/hcbug/picture1/raw/master/20260715194643831.webp
+image: https://gitee.com/hcbug/picture1/raw/master/20261002110715020.webp
 categories: [技术]
 tags: [AI, 教程]
 ---
@@ -148,11 +148,6 @@ caption: 示例：Gemma4 以为自己是 Claude
 
 ## 参考资料
 
-::video-embed
----
-type: bilibili
-id: BV1ENLV63EKZ
----
-::
+https://www.bilibili.com/video/BV1ENLV63EKZ （已失效）
 
 该视频与本教程有部分出入，原因在于发布时间早晚。

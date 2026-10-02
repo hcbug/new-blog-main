@@ -2,7 +2,7 @@
 title: 获取 TrustedInstaller 权限
 description: 删除文件需要XXX权限？文件已在XXX中打开？支持删除 System32 文件夹，释放C盘空间（bushi）。
 date: 2026-08-15 23:04:00
-updated: 2026-08-15 23:04:00
+updated: 2026-10-02 10:46:10
 image: https://gitee.com/hcbug/picture1/raw/master/20260815231020325.webp
 categories: [技术]
 tags: [Windows]
@@ -14,6 +14,7 @@ tags: [Windows]
 #default
 由本教程引起的自身经济财产损失与本博主无关，全部由用户自行承担。用户实践本教程即认同放弃自身数据安全。
 删除未知文件请三思并备份。删除系统文件易蓝屏甚至无法进入系统。
+效果因系统版本而异。请结束进程后再删除文件。
 ::
 
 ## 获取 TrustedInstaller 权限
