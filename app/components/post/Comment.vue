@@ -231,9 +231,7 @@ onMounted(() => {
 				border-radius: 6px;
 				white-space: nowrap !important;
 				font-size: 16px;
-				
-				transition: transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28), background-color 0.2s !important;
-				transform-origin: center center;
+				transition: background-color 0.2s !important;
 				
 				img {
 					width: 32px !important;
@@ -241,17 +239,33 @@ onMounted(() => {
 					max-width: 32px !important;  
 					max-height: 32px !important; 
 					object-fit: contain !important; 
+					transition: transform 0.2s ease-out, box-shadow 0.2s !important;
+					transform-origin: center center;
 				}
 				
 				&:hover {
 					z-index: 100; 
-					transform: scale(1.5) !important;
-					background-color: #fff !important;
-					box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+					background-color: rgba(0, 0, 0, 0.1) !important;
 					
 					:global(html.dark) & {
-						background-color: #1a1b1e !important;
-						box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.1);
+						background-color: rgba(255, 255, 255, 0.15) !important;
+					}
+
+					img {
+						transform: scale(2.2) !important;
+						
+						background-color: #E4E5E6 !important;
+						border: 2px solid #fff !important;
+						border-radius: 12px !important;
+						padding: 8px !important;
+						box-sizing: content-box !important;
+						box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+						
+						:global(html.dark) & {
+							background-color: #1a1b1e !important;
+							border-color: rgba(255, 255, 255, 0.2) !important;
+							box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8) !important;
+						}
 					}
 				}
 			}
@@ -311,29 +325,18 @@ onMounted(() => {
 				}
 
 				&:hover {
-					transform: none !important;
 					background-color: transparent !important;
-					box-shadow: none !important;
-					
-					:global(html.dark) & {
+					img {
+						transform: none !important; 
+						border: none !important;
+						padding: 0 !important;
 						background-color: transparent !important;
 						box-shadow: none !important;
 					}
 				}
 			}
-			
-			.OwO-bar {
-				gap: 4px !important;
-				padding: 8px !important;
-				
-				span {
-					font-size: 12px;
-					padding: 3px 8px !important;
-				}
-			}
 		}
 	}
-
 
 	.tk-extras, .tk-footer {
 		font-size: 0.7em;
