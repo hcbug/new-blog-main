@@ -187,6 +187,7 @@ onMounted(() => {
 
 	.OwO {
 		.OwO-body {
+			/* 浅色模式背景 */
 			background-color: #E4E5E6 !important; 
 			border: 1px solid rgba(0, 0, 0, 0.1) !important; 
 			border-radius: 8px !important; 
@@ -194,8 +195,9 @@ onMounted(() => {
 			padding: 0 !important;
 			overflow: hidden !important; 
 			
+			/* 深色模式背景 */
 			:global(html.dark) & {
-				background-color: #121314 !important;
+				background-color: #121314 !important; /* 面板整体底色极暗 */
 				border-color: rgba(255, 255, 255, 0.08) !important;
 				box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
 			}
@@ -214,7 +216,7 @@ onMounted(() => {
 				&::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.2); border-radius: 4px; }
 				
 				:global(html.dark) &::-webkit-scrollbar-thumb { 
-					background-color: #292C31; 
+					background-color: #292C31; /* 你的滚动条颜色 */
 				}
 			}
 
@@ -239,33 +241,23 @@ onMounted(() => {
 					max-width: 32px !important;  
 					max-height: 32px !important; 
 					object-fit: contain !important; 
-					transition: transform 0.2s ease-out, box-shadow 0.2s !important;
+					transition: transform 0.2s ease-out !important;
 					transform-origin: center center;
 				}
 				
 				&:hover {
 					z-index: 100; 
+					/* 浅色模式下的占位格子背景 */
 					background-color: rgba(0, 0, 0, 0.1) !important;
 					
+					/* 深色模式下的占位格子背景（你要求的 #292C31） */
 					:global(html.dark) & {
-						background-color: rgba(255, 255, 255, 0.15) !important;
+						background-color: #292C31 !important; 
 					}
 
+					/* 图片纯粹放大，不加任何边框、底色和阴影！ */
 					img {
-						transform: scale(2.2) !important;
-						
-						background-color: #E4E5E6 !important;
-						border: 2px solid #fff !important;
-						border-radius: 12px !important;
-						padding: 8px !important;
-						box-sizing: content-box !important;
-						box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
-						
-						:global(html.dark) & {
-							background-color: #1a1b1e !important;
-							border-color: rgba(255, 255, 255, 0.2) !important;
-							box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8) !important;
-						}
+						transform: scale(2.5) !important; 
 					}
 				}
 			}
@@ -304,7 +296,7 @@ onMounted(() => {
 					}
 
 					:global(html.dark) & {
-						color: #888 !important;
+						color: #999 !important; /* 文字提亮一点，确保看得清 */
 						&:hover { color: #fff !important; background-color: rgba(255, 255, 255, 0.08) !important; }
 						&.OwO-item-active { color: #fff !important; background-color: rgba(255, 255, 255, 0.15) !important; }
 					}
@@ -326,12 +318,11 @@ onMounted(() => {
 
 				&:hover {
 					background-color: transparent !important;
+					:global(html.dark) & {
+						background-color: transparent !important;
+					}
 					img {
 						transform: none !important; 
-						border: none !important;
-						padding: 0 !important;
-						background-color: transparent !important;
-						box-shadow: none !important;
 					}
 				}
 			}
