@@ -2,7 +2,8 @@
  * 全局图片视差：
  * - `[data-parallax]` 元素按属性值（最大位移 px）视差
  * - 文章正文 `.article img` 与碎碎念正文 `.speak-body img` 自动启用轻量视差（6px）
- * - MutationObserver 捕获路由切换后的新元素；rAF 节流；减少动态效果时禁用
+ * - 插件执行时 body 可能尚未创建：等 DOMContentLoaded 后再初始化，
+ *   MutationObserver 观察整个 document，路由切换后的新图片也会被收集
  */
 export default defineNuxtPlugin(() => {
 	if (import.meta.server)
@@ -51,19 +52,27 @@ export default defineNuxtPlugin(() => {
 		requestAnimationFrame(update)
 	}
 
-	// 初始收集 + 路由切换后动态收集
-	collect(document)
-	const observer = new MutationObserver((mutations) => {
-		for (const mutation of mutations) {
-			for (const node of mutation.addedNodes) {
-				if (node instanceof HTMLElement)
-					collect(node)
+	function init() {
+		collect(document)
+		// 观察整个 document（body 在插件执行时可能尚未创建）
+		new MutationObserver((mutations) => {
+			for (const mutation of mutations) {
+				for (const node of mutation.addedNodes) {
+					if (node instanceof HTMLElement)
+						collect(node)
+				}
 			}
-		}
-	})
-	observer.observe(document.body, { childList: true, subtree: true })
+		}).observe(document, { childList: true, subtree: true })
 
-	useEventListener(window, 'scroll', requestUpdate, { passive: true })
-	useEventListener(window, 'resize', requestUpdate, { passive: true })
-	requestUpdate()
+		useEventListener(window, 'scroll', requestUpdate, { passive: true })
+		useEventListener(window, 'resize', requestUpdate, { passive: true })
+		// 图片加载完成后布局变化，重算一次偏移
+		useEventListener(window, 'load', requestUpdate, { passive: true })
+		requestUpdate()
+	}
+
+	if (document.readyState === 'loading')
+		document.addEventListener('DOMContentLoaded', init, { once: true })
+	else
+		init()
 })

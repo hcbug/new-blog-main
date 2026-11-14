@@ -49,10 +49,24 @@ const { data: speaks } = await useAsyncData('content:speaks', () => queryCollect
 				/>
 			</div>
 
-			<ContentRenderer class="speak-body article" :value="speak" />
+			<div class="card-main">
+				<ContentRenderer class="speak-body article" :value="speak" />
+			</div>
 
-			<footer class="speak-foot">
-				<UtilDate :date="speak.date" icon="tabler:clock" relative />
+			<footer class="card-foot">
+				<span class="site-info">
+					<NuxtImg
+						class="site-avatar"
+						:src="appConfig.author.avatar"
+						:alt="`${appConfig.author.name} 的头像`"
+						width="20"
+						height="20"
+						loading="lazy"
+						referrerpolicy="no-referrer"
+					/>
+					<span class="site-name">{{ appConfig.author.name }}</span>
+				</span>
+				<UtilDate class="speak-time" :date="speak.date" relative />
 			</footer>
 		</article>
 	</div>
@@ -110,12 +124,15 @@ const { data: speaks } = await useAsyncData('content:speaks', () => queryCollect
 	overflow: hidden;
 	width: 100%;
 	margin-bottom: 0.8rem;
-	border-radius: 0.8em;
+	padding: 0.7em 0.9em;
+	border-radius: 0.8rem;
 	break-inside: avoid;
 
 	.speak-cover {
 		overflow: hidden;
 		height: 11em;
+		margin: -0.7em -0.9em 0.6em;
+		border-radius: 0.5rem;
 
 		.cover-img {
 			width: 100%;
@@ -125,18 +142,51 @@ const { data: speaks } = await useAsyncData('content:speaks', () => queryCollect
 		}
 	}
 
-	// 卡片内复用文章排版，但去掉 .article 自带的外边距
-	:deep(.article) {
-		margin: 0;
-		padding: 0.4em 1em;
-		font-size: 0.92em;
+	.card-main {
+		// 卡片内复用文章排版，但去掉 .article 自带的外边距
+		:deep(.article) {
+			margin: 0;
+			font-size: 0.92em;
+		}
 	}
 
-	.speak-foot {
-		padding: 0.5em 1em 0.7em;
+	.card-foot {
+		display: flex;
+		gap: 0.5em;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: 0.6em;
+		padding-top: 0.5em;
 		border-top: 1px solid var(--c-border);
-		font-size: 0.8em;
-		color: var(--c-text-3);
+
+		.site-info {
+			display: flex;
+			gap: 0.4em;
+			align-items: center;
+			min-width: 0;
+
+			.site-avatar {
+				flex-shrink: 0;
+				width: 1.4em;
+				height: 1.4em;
+				border-radius: 50%;
+				object-fit: cover;
+			}
+
+			.site-name {
+				overflow: hidden;
+				font-size: 0.8em;
+				white-space: nowrap;
+				text-overflow: ellipsis;
+				color: var(--c-text-2);
+			}
+		}
+
+		.speak-time {
+			flex-shrink: 0;
+			font-size: 0.75em;
+			color: var(--c-text-3);
+		}
 	}
 }
 </style>

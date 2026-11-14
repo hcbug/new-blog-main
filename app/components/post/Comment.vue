@@ -218,27 +218,33 @@ function setupEmojiZoom(root: HTMLElement) {
 :deep(#twikoo) {
 	margin: 2em 0;
 
-	// 表情栏展开动画：display 切换会重置动画，每次展开都会播放
+	// 表情栏展开/收起动画：
+	// display 用 allow-discrete 参与过渡（收起时 display:none 在过渡结束才生效），
+	// 展开时借助 @starting-style 获得入场初始态，双向都有动画。
 	.OwO .OwO-body {
+		opacity: 0;
+		transform: translateY(6px) scale(0.96);
 		transform-origin: bottom left;
-		animation: owo-pop 0.22s ease;
+		transition:
+			opacity 0.18s ease,
+			transform 0.18s ease,
+			display 0.18s allow-discrete;
 	}
 
-	@keyframes owo-pop {
-		from {
+	.OwO.OwO-open .OwO-body {
+		opacity: 1;
+		transform: none;
+
+		@starting-style {
 			opacity: 0;
 			transform: translateY(6px) scale(0.96);
-		}
-
-		to {
-			opacity: 1;
-			transform: none;
 		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.OwO .OwO-body {
-			animation: none;
+		.OwO .OwO-body,
+		.OwO.OwO-open .OwO-body {
+			transition: none;
 		}
 	}
 
