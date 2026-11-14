@@ -184,6 +184,59 @@ onMounted(() => {
 		height: 1.4em;
 		vertical-align: text-bottom;
 	}
+	.OwO {
+		.OwO-body {
+			.OwO-items {
+				display: grid !important;
+				grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)) !important;
+				gap: 6px !important;
+				padding: 10px !important;
+				.OwO-item {
+					width: 100% !important;
+					aspect-ratio: 1 / 1;
+					display: flex !important;
+					justify-content: center;
+					align-items: center;
+					padding: 4px !important;
+					border-radius: 6px;
+					transition: background 0.2s;
+
+					&:hover {
+						background-color: rgba(0, 0, 0, 0.05);
+					}
+					
+					img {
+						max-width: 80% !important;  
+						max-height: 80% !important; 
+						width: 100%;
+						height: 100%;
+						object-fit: contain; 
+					}
+				}
+			}
+			
+			.OwO-bar {
+				font-size: 14px;
+				padding: 0 10px 10px;
+				span {
+					margin-right: 8px;
+					cursor: pointer;
+				}
+			}
+		}
+	}
+
+	@media screen and (max-width: 768px) {
+		.OwO .OwO-body {
+			.OwO-items {
+				grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)) !important;
+				gap: 4px !important;
+			}
+			.OwO-item:hover {
+				background-color: transparent;
+			}
+		}
+	}
 
 	.tk-extras, .tk-footer {
 		font-size: 0.7em;
