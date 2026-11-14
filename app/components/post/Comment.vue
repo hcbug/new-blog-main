@@ -186,84 +186,138 @@ onMounted(() => {
 	}
 	.OwO {
 		.OwO-body {
-			background-color: #121314 !important;
-			border: 1px solid rgba(255, 255, 255, 0.08) !important;
-			border-radius: 8px !important;
-			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
-			max-height: 350px !important; 
-			overflow-y: auto !important;
-			padding-bottom: 0 !important;
-			box-sizing: border-box;
+			background-color: #121314 !important; 
+			border: 1px solid rgba(255, 255, 255, 0.08) !important; 
+			border-radius: 8px !important; 
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+			display: flex !important;
+			flex-direction: column !important;
 			
-			&::-webkit-scrollbar {
-				width: 6px;
-			}
-			&::-webkit-scrollbar-thumb {
-				background-color: rgba(255, 255, 255, 0.15);
-				border-radius: 4px;
-				&:hover {
-					background-color: rgba(255, 255, 255, 0.3);
-				}
-			}
-			&::-webkit-scrollbar-track {
-				background: transparent;
-			}
-
 			.OwO-items {
+				display: flex !important;
+				flex-wrap: wrap !important;
+				align-content: flex-start !important;
+				padding: 20px !important; 
+				max-height: 350px !important; 
+				overflow-y: auto !important;
 				color: #d1d1d1 !important;
-				padding: 10px !important;
+				
+				&::-webkit-scrollbar {
+					width: 6px;
+				}
+				&::-webkit-scrollbar-thumb {
+					background-color: rgba(255, 255, 255, 0.15);
+					border-radius: 4px;
+					&:hover {
+						background-color: rgba(255, 255, 255, 0.3);
+					}
+				}
+				&::-webkit-scrollbar-track {
+					background: transparent;
+				}
 			}
 
 			.OwO-item {
-				width: 48px !important;  
-				height: 48px !important; 
-				padding: 4px !important;
-				margin: 3px !important; 
+				position: relative;
+				min-width: 48px !important;  
+				min-height: 48px !important; 
+				padding: 4px 8px !important;
+				margin: 4px !important; 
 				display: inline-flex !important; 
 				justify-content: center;
 				align-items: center;
-				vertical-align: middle;
 				box-sizing: border-box;
 				border-radius: 6px;
-				transition: all 0.2s;
-
-				&:hover {
-					background-color: rgba(255, 255, 255, 0.08) !important;
-				}
+				transition: background-color 0.2s;
+				
+				white-space: nowrap !important;
+				font-size: 14px;
+				color: #d1d1d1 !important;
 				
 				img {
-					max-width: 100% !important;  
-					max-height: 100% !important; 
 					width: 36px !important;
 					height: 36px !important;
-					object-fit: contain; 
+					max-width: 36px !important;  
+					max-height: 36px !important; 
+					object-fit: contain !important; 
+					transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28), box-shadow 0.2s !important;
+					transform-origin: center center;
+				}
+
+				&:hover {
+					z-index: 100; 
+					background-color: rgba(255, 255, 255, 0.08) !important;
+					
+					img {
+						transform: scale(2); 
+						background-color: #1a1b1e; 
+						border-radius: 8px;
+						padding: 8px; 
+						box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.1);
+						box-sizing: border-box;
+					}
 				}
 			}
 			
 			.OwO-bar {
-				font-size: 13px;
-				padding: 8px 10px;
-				background-color: #161618 !important;
+				display: flex !important;
+				flex-wrap: wrap !important;
+				gap: 6px !important;
+				padding: 10px !important;
+				background-color: #161618 !important; 
 				border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
-				border-radius: 0 0 8px 8px;
+				border-radius: 0 0 8px 8px !important; 
+				flex-shrink: 0;
 				
 				span {
-					margin-right: 12px;
+					margin: 0 !important;
+					padding: 4px 10px !important;
+					color: #888 !important; 
+					font-size: 13px;
+					border-radius: 6px;
 					cursor: pointer;
-					color: #888 !important;
-					transition: color 0.2s, background-color 0.2s;
-					padding: 4px 8px;
-					border-radius: 4px;
+					transition: all 0.2s;
 					
 					&:hover {
 						color: #fff !important;
+						background-color: rgba(255, 255, 255, 0.08) !important;
 					}
 
 					&.OwO-item-active {
-						color: #fff !important;
-						background-color: rgba(255, 255, 255, 0.1) !important;
+						color: #fff !important; 
+						background-color: rgba(255, 255, 255, 0.15) !important; 
 						font-weight: 500;
 					}
+				}
+			}
+		}
+	}
+
+	@media screen and (max-width: 768px) {
+		.OwO .OwO-body {
+			.OwO-item {
+				width: 40px !important;
+				height: 40px !important;
+				margin: 2px !important;
+				
+				img {
+					width: 30px !important;
+					height: 30px !important;
+				}
+
+				&:hover img {
+					transform: scale(1); 
+					padding: 0;
+					background-color: transparent;
+					box-shadow: none;
+				}
+			}
+			.OwO-bar {
+				gap: 4px !important;
+				padding: 8px !important;
+				span {
+					font-size: 12px;
+					padding: 3px 8px !important;
 				}
 			}
 		}
