@@ -15,14 +15,12 @@ function hasHeading(tocTree: TocLink, heading?: string): boolean {
 	return tocTree.id === heading || !!tocTree.children?.some(child => hasHeading(child, heading))
 }
 
-/** 阅读进度百分比：高频更新只改 DOM 文本 */
+/** 阅读进度百分比：以正文为基准（不含评论区），高频更新只改 DOM 文本 */
 const percentEl = useTemplateRef<HTMLSpanElement>('percent')
 function updateReadPercent() {
-	const main = document.querySelector('#main-content')
-	if (!main || !percentEl.value)
+	if (!percentEl.value)
 		return
-	const total = main.scrollHeight - window.innerHeight
-	const percent = total > 0 ? Math.min(100, Math.max(0, Math.round(window.scrollY / total * 100))) : 0
+	const percent = Math.round(getArticleScrollProgress() * 100)
 	percentEl.value.textContent = `${percent}%`
 }
 

@@ -77,6 +77,8 @@ const blogConfig = {
 		apiBase: 'https://api.injahow.cn/meting/',
 		/** 网易云歌单 ID，换成自己的歌单只需改这里 */
 		playlistId: '8578694173',
+		/** 歌单最大加载曲目数（歌单过大时防止请求超时，取歌单前 N 首） */
+		playlistLimit: 300,
 		/** 初始音量 0~1 */
 		defaultVolume: 0.6,
 	},
@@ -95,12 +97,16 @@ const blogConfig = {
 		preload: 'https://twikoo.hcbu.cn/',
 	},
 
-	/** 公告栏：按访客 IP 归属地生成问候语 */
+	/** 公告栏：公告正文 + 按访客 IP 归属地生成的问候 */
 	visitor: {
 		/** 博主所在地，用于计算“你距离博主 X 公里” */
 		home: { name: '宿迁', lng: 118.2755, lat: 33.9631 },
-		/** IP 归属地获取失败时的兜底文案 */
-		fallback: '欢迎光临洪畅的博客！想，全是问题；做，才有答案。',
+		/** 公告正文（纯文本，支持换行），可随意修改 */
+		announcement: '欢迎来到洪畅的博客！\n想，全是问题；做，才有答案。',
+		/** 是否在公告下方显示按 IP 归属地生成的访客问候 */
+		showGreeting: true,
+		/** IP 归属地获取失败时的兜底问候文案 */
+		fallback: '欢迎光临洪畅的博客！',
 	},
 }
 

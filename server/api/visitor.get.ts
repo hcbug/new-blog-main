@@ -278,7 +278,7 @@ function compose(geo: Geo | null): string {
 	const desc = cn.nation === '中国'
 		? provinceDesc(cn.province, cn.city)
 		: countryDesc(cn.nation)
-	const tail = dist !== null ? `你距离博主约 ${dist} 公里` : ''
+	const tail = dist !== null ? `你距离洪畅约 ${dist} 公里` : ''
 	const extra = [desc, tail].filter(Boolean).join('，')
 
 	return `欢迎来自 ${where} 的访客！${greet}${extra ? `。${extra}` : ''}`

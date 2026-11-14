@@ -8,11 +8,9 @@ let ticking = false
 
 function update() {
 	ticking = false
-	const main = document.querySelector('#main-content')
-	if (!main || !fillEl.value)
+	if (!fillEl.value)
 		return
-	const total = main.scrollHeight - window.innerHeight
-	const progress = total > 0 ? Math.min(1, Math.max(0, window.scrollY / total)) : 0
+	const progress = getArticleScrollProgress()
 	fillEl.value.style.transform = `scaleX(${progress})`
 }
 

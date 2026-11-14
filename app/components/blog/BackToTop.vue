@@ -19,8 +19,7 @@ function update() {
 		buttonEl.value.classList.toggle('show', show)
 	}
 	if (show && ringEl.value) {
-		const total = document.documentElement.scrollHeight - window.innerHeight
-		const progress = total > 0 ? Math.min(1, scrollY / total) : 0
+		const progress = getArticleScrollProgress()
 		ringEl.value.style.strokeDashoffset = String(CIRCUMFERENCE * (1 - progress))
 	}
 }

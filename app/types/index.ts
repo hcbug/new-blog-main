@@ -32,5 +32,10 @@ declare global {
 		}
 		/** KaTeX 由 blog.config.ts 的 head 脚本全局加载 */
 		katex?: unknown
+		/** Cloudflare Turnstile（友链申请表单的人机验证） */
+		turnstile?: {
+			render: (el: HTMLElement, options: Record<string, unknown>) => string
+			remove: (widgetId: string) => void
+		}
 	}
 }

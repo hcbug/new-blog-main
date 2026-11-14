@@ -39,7 +39,7 @@ const posts = computed(() => {
 	const list = response.value?.sites.flatMap(site => site.posts.map(post => ({ site, post }))) ?? []
 	return list
 		.sort((a, b) => b.post.date - a.post.date)
-		.slice(0, 60)
+		.slice(0, 25)
 })
 
 const generatedText = computed(() => {

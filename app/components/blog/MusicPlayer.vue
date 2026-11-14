@@ -147,8 +147,9 @@ async function loadPlaylist() {
 			songs.value = cached
 		}
 		else {
-			const url = `${music.apiBase}?server=netease&type=playlist&id=${music.playlistId}`
-			const raw: any[] = await jsonp(url)
+			const url = `${music.apiBase}?server=netease&type=playlist&id=${music.playlistId}&limit=${music.playlistLimit ?? 300}`
+			// 大歌单响应较慢，放宽超时
+			const raw: any[] = await jsonp(url, 20_000)
 			const list = (Array.isArray(raw) ? raw : [])
 				.map(item => ({
 					id: extractId(item),

@@ -10,9 +10,11 @@
 		网站系统后台
 	</div>
 
-	<Tip copy icon :tip-options="{ placement: 'left' }">
-		<Icon name="tabler:brand-apple-arcade" />game.hcbu.cn/console
-	</Tip>
+	<UtilLink class="tip" to="https://game.hcbu.cn/console">
+		<Icon name="tabler:brand-apple-arcade" />
+		<span class="tip-text">game.hcbu.cn/console</span>
+		<Icon class="external-tip" name="tabler:arrow-up-right" />
+	</UtilLink>
 </BlogWidget>
 </template>
 
@@ -32,8 +34,29 @@
 }
 
 .tip {
+	display: flex;
+	gap: 0.35em;
+	align-items: center;
 	font-size: 0.9em;
 	line-height: 2;
+	color: var(--c-text-2);
+	transition: color 0.2s;
+
+	&:hover {
+		color: var(--c-primary);
+	}
+
+	.tip-text {
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	.external-tip {
+		flex-shrink: 0;
+		opacity: 0.5;
+		font-size: 0.9em;
+	}
 }
 
 :deep(.bg-img).bg-img.bg-img {

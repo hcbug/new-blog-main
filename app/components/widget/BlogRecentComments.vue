@@ -69,21 +69,21 @@ function parseComment(html: string): PreviewPart[] {
 	return parts
 }
 
-/** 中文相对时间：秒级时间戳 → “刚刚 / N 分钟前 / …” */
-function relTime(created: number): string {
-	const diff = Math.max(0, Math.floor(Date.now() / 1000) - created)
-	if (diff < 60)
+/** 中文相对时间：Twikoo 返回毫秒级时间戳 → “刚刚 / N 分钟前 / …” */
+function relTime(createdMs: number): string {
+	const diff = Math.max(0, Date.now() - createdMs)
+	if (diff < 60_000)
 		return '刚刚'
 	const units: [number, string][] = [
-		[60 * 60 * 24 * 365, '年前'],
-		[60 * 60 * 24 * 30, '个月前'],
-		[60 * 60 * 24, '天前'],
-		[60 * 60, '小时前'],
-		[60, '分钟前'],
+		[365 * 24 * 60 * 60 * 1000, '年前'],
+		[30 * 24 * 60 * 60 * 1000, '个月前'],
+		[24 * 60 * 60 * 1000, '天前'],
+		[60 * 60 * 1000, '小时前'],
+		[60 * 1000, '分钟前'],
 	]
-	for (const [sec, label] of units) {
-		if (diff >= sec)
-			return `${Math.floor(diff / sec)}${label}`
+	for (const [ms, label] of units) {
+		if (diff >= ms)
+			return `${Math.floor(diff / ms)}${label}`
 	}
 	return '刚刚'
 }
