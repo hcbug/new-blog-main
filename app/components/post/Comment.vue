@@ -214,7 +214,7 @@ onMounted(() => {
 				&::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.2); border-radius: 4px; }
 				
 				:global(html.dark) &::-webkit-scrollbar-thumb { 
-					background-color: rgba(255, 255, 255, 0.15); 
+					background-color: #292C31; 
 				}
 			}
 
