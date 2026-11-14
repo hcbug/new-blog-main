@@ -281,7 +281,7 @@ function compose(geo: Geo | null): string {
 	const tail = dist !== null ? `你距离洪畅约 ${dist} 公里` : ''
 	const extra = [desc, tail].filter(Boolean).join('，')
 
-	return `欢迎来自 ${where} 的访客！${greet}${extra ? `。${extra}` : ''}`
+	return `欢迎来自 ${where} 的访客！\n${greet}\n${extra ? `。${extra}` : ''}`
 }
 
 export default defineEventHandler(async (event) => {
