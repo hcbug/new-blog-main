@@ -5,7 +5,7 @@ date: 2026-10-02 11:18:30
 updated: 2026-10-02 15:55:00
 image: https://gitee.com/hcbug/picture1/raw/master/20261002111331017.webp
 categories: [技术]
-tags: [AI，教程]
+tags: [AI, 教程]
 ---
 
 ## 前提

@@ -188,7 +188,7 @@ async function submit() {
 		v-model="raw"
 		class="apply-input"
 		rows="5"
-		placeholder="例如：&#10;名称：小明的博客&#10;链接：https://example.com/&#10;头像：https://example.com/avatar.png&#10;简介：记录生活的点滴"
+		placeholder="名称：洪畅的博客&#10;链接：https://blog.hcbu.cn/&#10;头像：https://gitee.com/hcbug/picture1/raw/master/20260607223324364.webp&#10;简介：想，全是问题；做，才有答案。&#10;可附上博主名称和RSS链接"
 		aria-label="粘贴博客信息"
 	/>
 

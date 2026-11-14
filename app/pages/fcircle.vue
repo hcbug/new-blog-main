@@ -158,7 +158,7 @@ onMounted(() => {
 
 	<p v-if="status === 'loading' && !response" class="hint">
 		<Icon class="pulse" name="tabler:loader-2" />
-		正在抓取友链博客的最新文章，可能需要几秒…
+		正在抓取友链博客的最新文章，可能需要几十秒…
 	</p>
 	<p v-else-if="status === 'error'" class="hint">
 		抓取失败了，<button class="link-btn" @click="load(true)">

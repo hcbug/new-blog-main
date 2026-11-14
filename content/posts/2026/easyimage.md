@@ -5,7 +5,7 @@ date: 2026-08-10 12:00:00
 updated: 2026-08-10 12:45:00
 image: https://gitee.com/hcbug/picture1/raw/master/20260810223120526.webp
 categories: [技术]
-tags: [博客，教程]
+tags: [博客, 教程]
 ---
 
 ## 前提
