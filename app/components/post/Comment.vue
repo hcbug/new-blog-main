@@ -193,35 +193,24 @@ onMounted(() => {
 			display: flex !important;
 			flex-direction: column !important;
 			
+			max-height: 400px !important; 
+			overflow: hidden !important;
+			
 			.OwO-items {
-				display: flex !important;
-				flex-wrap: wrap !important;
-				align-content: flex-start !important;
-				padding: 20px !important; 
-				max-height: 350px !important; 
+				padding: 15px !important; 
 				overflow-y: auto !important;
-				color: #d1d1d1 !important;
+				flex: 1;
 				
-				&::-webkit-scrollbar {
-					width: 6px;
-				}
-				&::-webkit-scrollbar-thumb {
-					background-color: rgba(255, 255, 255, 0.15);
-					border-radius: 4px;
-					&:hover {
-						background-color: rgba(255, 255, 255, 0.3);
-					}
-				}
-				&::-webkit-scrollbar-track {
-					background: transparent;
-				}
+				&::-webkit-scrollbar { width: 6px; }
+				&::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+				&::-webkit-scrollbar-track { background: transparent; }
 			}
 
 			.OwO-item {
 				position: relative;
 				min-width: 48px !important;  
 				min-height: 48px !important; 
-				padding: 4px 8px !important;
+				padding: 4px 8px !important; 
 				margin: 4px !important; 
 				display: inline-flex !important; 
 				justify-content: center;
@@ -231,8 +220,8 @@ onMounted(() => {
 				transition: background-color 0.2s;
 				
 				white-space: nowrap !important;
-				font-size: 14px;
 				color: #d1d1d1 !important;
+				font-size: 14px;
 				
 				img {
 					width: 36px !important;
@@ -240,14 +229,13 @@ onMounted(() => {
 					max-width: 36px !important;  
 					max-height: 36px !important; 
 					object-fit: contain !important; 
-					transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28), box-shadow 0.2s !important;
+					transition: transform 0.2s, box-shadow 0.2s !important;
 					transform-origin: center center;
 				}
 
 				&:hover {
 					z-index: 100; 
-					background-color: rgba(255, 255, 255, 0.08) !important;
-					
+					background-color: rgba(255, 255, 255, 0.08) !important; 
 					img {
 						transform: scale(2); 
 						background-color: #1a1b1e; 
@@ -262,7 +250,7 @@ onMounted(() => {
 			.OwO-bar {
 				display: flex !important;
 				flex-wrap: wrap !important;
-				gap: 6px !important;
+				gap: 6px !important; 
 				padding: 10px !important;
 				background-color: #161618 !important; 
 				border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
@@ -282,7 +270,6 @@ onMounted(() => {
 						color: #fff !important;
 						background-color: rgba(255, 255, 255, 0.08) !important;
 					}
-
 					&.OwO-item-active {
 						color: #fff !important; 
 						background-color: rgba(255, 255, 255, 0.15) !important; 
