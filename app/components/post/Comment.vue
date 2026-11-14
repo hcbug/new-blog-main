@@ -186,42 +186,178 @@ onMounted(() => {
 	}
 	.OwO {
 		.OwO-body {
-			.OwO-items {
-				display: grid !important;
-				grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)) !important;
-				gap: 6px !important;
-				padding: 10px !important;
-				.OwO-item {
-					width: 100% !important;
-					aspect-ratio: 1 / 1;
-					display: flex !important;
-					justify-content: center;
-					align-items: center;
-					padding: 4px !important;
-					border-radius: 6px;
-					transition: background 0.2s;
+			background-color: #E4E5E6 !important; 
+			border: 1px solid rgba(0, 0, 0, 0.1) !important; 
+			border-radius: 8px !important; 
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+			padding: 0 !important;
+			overflow: hidden !important; 
+			
+			html.dark & {
+				background-color: #121314 !important;
+				border-color: rgba(255, 255, 255, 0.08) !important;
+				box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+			}
 
-					&:hover {
-						background-color: rgba(0, 0, 0, 0.05);
-					}
+			.OwO-items {
+				padding: 15px !important;
+				max-height: 320px !important;
+				overflow-y: auto !important;
+				color: #333 !important;
+				
+				html.dark & {
+					color: #d1d1d1 !important;
+				}
+
+				&::-webkit-scrollbar { width: 6px; }
+				&::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+				html.dark &::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.15); }
+			}
+
+			.OwO-item {
+				position: relative;
+				min-width: 44px !important;  
+				min-height: 44px !important; 
+				padding: 4px !important; 
+				margin: 4px !important; 
+				display: inline-flex !important; 
+				justify-content: center;
+				align-items: center;
+				box-sizing: border-box;
+				border-radius: 6px;
+				white-space: nowrap !important;
+				font-size: 16px;
+				
+				transition: transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28), background-color 0.2s !important;
+				transform-origin: center center;
+				
+				img {
+					width: 32px !important;
+					height: 32px !important;
+					max-width: 32px !important;  
+					max-height: 32px !important; 
+					object-fit: contain !important; 
+				}
+				
+				&:hover {
+					z-index: 100; 
+					transform: scale(2) !important;
+					background-color: #fff !important;
+					box-shadow: 0 4px 16px rgba(0,0,0,0.15);
 					
-					img {
-						max-width: 80% !important;  
-						max-height: 80% !important; 
-						width: 100%;
-						height: 100%;
-						object-fit: contain; 
+					html.dark & {
+						background-color: #1a1b1e !important;
+						box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.1);
 					}
 				}
 			}
 			
 			.OwO-bar {
-				font-size: 14px;
-				padding: 0 10px 10px;
-				span {
-					margin-right: 8px;
-					cursor: pointer;
+				display: flex !important;
+				flex-wrap: wrap !important;
+				gap: 6px !important; 
+				padding: 10px !important;
+				background-color: rgba(0, 0, 0, 0.05) !important; 
+				border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
+				border-radius: 0 0 8px 8px !important; 
+				
+				html.dark & {
+					background-color: #161618 !important; 
+					border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
 				}
+				
+				span {
+					margin: 0 !important;
+					padding: 4px 10px !important;
+					color: #666 !important; 
+					font-size: 13px;
+					border-radius: 6px;
+					cursor: pointer;
+					transition: all 0.2s;
+					
+					&:hover {
+						color: #111 !important;
+						background-color: rgba(0, 0, 0, 0.08) !important;
+					}
+					&.OwO-item-active {
+						color: #111 !important; 
+						background-color: rgba(0, 0, 0, 0.12) !important; 
+						font-weight: 500;
+					}
+
+					html.dark & {
+						color: #888 !important;
+						&:hover { color: #fff !important; background-color: rgba(255, 255, 255, 0.08) !important; }
+						&.OwO-item-active { color: #fff !important; background-color: rgba(255, 255, 255, 0.15) !important; }
+					}
+				}
+			}
+		}
+	}
+
+	@media screen and (max-width: 768px) {
+		.OwO .OwO-body {
+			.OwO-item {
+				width: 40px !important;
+				height: 40px !important;
+				margin: 2px !important;
+				
+				img {
+					width: 30px !important;
+					height: 30px !important;
+				}
+
+				&:hover img {
+					transform: scale(1); 
+					padding: 0;
+					background-color: transparent;
+					box-shadow: none;
+				}
+			}
+			.OwO-bar {
+				gap: 4px !important;
+				padding: 8px !important;
+				span {
+					font-size: 12px;
+					padding: 3px 8px !important;
+				}
+			}
+		}
+	}
+
+	@media screen and (max-width: 768px) {
+		.OwO .OwO-body {
+			.OwO-item {
+				width: 40px !important;
+				height: 40px !important;
+				margin: 2px !important;
+				
+				img {
+					width: 30px !important;
+					height: 30px !important;
+				}
+			}
+			.OwO-item:hover {
+				background-color: transparent !important; 
+			}
+		}
+	}
+
+	@media screen and (max-width: 768px) {
+		.OwO .OwO-body {
+			.OwO-item {
+				width: 40px !important;
+				height: 40px !important;
+				margin: 2px !important;
+				
+				img {
+					width: 30px !important;
+					height: 30px !important;
+				}
+			}
+			
+			.OwO-item:hover {
+				background-color: transparent;
 			}
 		}
 	}
