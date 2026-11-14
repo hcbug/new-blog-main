@@ -69,6 +69,7 @@ const curTimeEl = useTemplateRef<HTMLSpanElement>('cur-time')
 const durEl = useTemplateRef<HTMLSpanElement>('dur')
 const lineFillEl = useTemplateRef<HTMLDivElement>('line-fill')
 const lyricsEl = useTemplateRef<HTMLDivElement>('lyrics')
+const stripLineEl = useTemplateRef<HTMLSpanElement>('strip-line')
 
 let currentSec = 0
 let pendingSeek = 0
@@ -395,21 +396,57 @@ async function loadLyrics(song: Song) {
 	}
 }
 
-/** 歌词页的逐字高亮：直接操作 DOM，避免整棵歌词树重渲染 */
+/** 歌词页的逐字高亮：唱过的词变蓝，正在唱的词按进度渐变填充 */
 function updatePaneHighlight(lineIdx: number, wordIdx: number) {
 	const container = lyricsEl.value
 	if (!container)
 		return
-	if (lineIdx !== prevPaneLine)
-		container.querySelectorAll('.word.on').forEach(el => el.classList.remove('on'))
-	else if (prevPaneWord >= 0 && wordIdx !== prevPaneWord)
-		container.querySelectorAll(`.lyric-line[data-line="${lineIdx}"] .word.on`).forEach(el => el.classList.remove('on'))
+	if (lineIdx !== prevPaneLine) {
+		container.querySelectorAll('.word.sung').forEach(el => el.classList.remove('sung'))
+		container.querySelectorAll<HTMLElement>('.word.current').forEach((el) => {
+			el.classList.remove('current')
+			el.style.removeProperty('--p')
+		})
+	}
 	if (wordIdx >= 0) {
-		const target = container.querySelector(`.lyric-line[data-line="${lineIdx}"] .word[data-wi="${wordIdx}"]`)
-		target?.classList.add('on')
+		const lineEl = container.querySelector(`.lyric-line[data-line="${lineIdx}"]`)
+		lineEl?.querySelectorAll<HTMLElement>('.word').forEach((el, index) => {
+			const sung = index < wordIdx
+			const current = index === wordIdx
+			el.classList.toggle('sung', sung)
+			el.classList.toggle('current', current)
+			if (!current)
+				el.style.removeProperty('--p')
+		})
 	}
 	prevPaneLine = lineIdx
 	prevPaneWord = wordIdx
+}
+
+/** 正在唱的词填充进度（--p）：唱过的部分蓝色、未唱的部分保持原色 */
+function updateWordFill(container: HTMLElement | null, lineIdx: number, wordIdx: number) {
+	if (!container || lineIdx < 0 || wordIdx < 0)
+		return
+	const seg = lrcLines.value[lineIdx]?.words[wordIdx]
+	if (!seg)
+		return
+	const p = Math.min(1, Math.max(0, (currentSec - seg.start) / Math.max(0.1, seg.dur)))
+	container.querySelector<HTMLElement>(`.lyric-line[data-line="${lineIdx}"] .word[data-wi="${wordIdx}"]`)
+		?.style
+		.setProperty('--p', `${(p * 100).toFixed(1)}%`)
+}
+
+/** 胶囊常驻歌词区的词填充进度 */
+function updateStripFill(wordIdx: number) {
+	const line = currentLine.value
+	const seg = line?.words[wordIdx]
+	if (!seg)
+		return
+	const el = stripLineEl.value?.querySelectorAll<HTMLElement>('.strip-word')[wordIdx]
+	if (!el)
+		return
+	const p = Math.min(1, Math.max(0, (currentSec - seg.start) / Math.max(0.1, seg.dur)))
+	el.style.setProperty('--p', `${(p * 100).toFixed(1)}%`)
 }
 
 // ---------- 播放控制 ----------
@@ -564,6 +601,9 @@ function onTimeUpdate() {
 		updatePaneHighlight(index, wordIdx)
 	if (wordIdx !== stripWordIdx.value)
 		stripWordIdx.value = wordIdx
+	// 卡拉OK填充：唱过的词蓝色、当前词随播放进度渐变
+	updateWordFill(lyricsEl.value, index, wordIdx)
+	updateStripFill(wordIdx)
 }
 
 function onLoadedMetadata() {
@@ -814,7 +854,7 @@ onBeforeUnmount(() => {
 						aria-label="开关歌词"
 						@click="toggleLyric"
 					>
-						<Icon name="tabler:microphone" />
+						<Icon name="tabler:file-music" />
 					</button>
 					<button class="icon-btn" aria-label="收起播放器" @click="expanded = false">
 						<Icon name="tabler:chevron-down" />
@@ -881,10 +921,7 @@ onBeforeUnmount(() => {
 							<button class="icon-btn" aria-label="下一首" @click="stepNext">
 								<Icon name="tabler:player-skip-forward-filled" />
 							</button>
-						</div>
-
-						<!-- 音量：喇叭图标 + 音量条（静音直接拖到 0） -->
-						<div class="volume-row">
+							<!-- 音量：喇叭 + 音量条，与播放按钮同行（静音直接拖到 0） -->
 							<Icon class="volume-icon" name="tabler:volume" />
 							<input
 								v-model.number="volume"
@@ -954,16 +991,19 @@ onBeforeUnmount(() => {
 			</button>
 
 			<!-- 常驻歌词：详情面板关闭后仍然保留；点击可重新打开详情 -->
-			<Transition name="strip">
-				<button v-if="lyricMode" class="capsule-lyric" aria-label="打开歌词详情" @click="expanded = true">
+			<div class="capsule-strip" :class="{ open: lyricMode }">
+				<button class="capsule-lyric" aria-label="打开歌词详情" @click="expanded = true">
 					<template v-if="currentLine">
-						<span class="strip-line">
+						<span ref="strip-line" class="strip-line">
 							<template v-if="currentLine.words.length">
 								<span
 									v-for="(word, wordIndex) in currentLine.words"
 									:key="wordIndex"
 									class="strip-word"
-									:class="{ on: wordIndex === stripWordIdx }"
+									:class="{
+										sung: wordIndex < stripWordIdx,
+										current: wordIndex === stripWordIdx,
+									}"
 								>{{ word.text }}</span>
 							</template>
 							<template v-else>{{ currentLine.text }}</template>
@@ -974,7 +1014,7 @@ onBeforeUnmount(() => {
 						{{ status === 'loading' ? '歌词加载中…' : '暂无歌词' }}
 					</span>
 				</button>
-			</Transition>
+			</div>
 
 			<button class="capsule-play" aria-label="播放/暂停" @click="togglePlay">
 				<Icon :name="playing ? 'tabler:player-pause-filled' : 'tabler:player-play-filled'" />
@@ -1003,7 +1043,8 @@ onBeforeUnmount(() => {
 .music-player {
 	position: fixed;
 	inset-inline-start: min(1rem, 5%);
-	bottom: min(2rem, 5%);
+	// 抬高一截，避免盖住左侧栏底部的浅色/深色切换组件
+	bottom: calc(min(2rem, 5%) + 5.5rem);
 	z-index: 90; // 低于弹窗层，避免盖住侧栏遮罩
 }
 
@@ -1256,31 +1297,28 @@ onBeforeUnmount(() => {
 
 	.control-row {
 		display: flex;
+		gap: 0.15em;
 		align-items: center;
 		justify-content: center;
 		margin-top: 0.3em;
-	}
-
-	.play-btn {
-		font-size: 1.6em;
-	}
-
-	.volume-row {
-		display: flex;
-		gap: 0.5em;
-		align-items: center;
 
 		.volume-icon {
 			flex-shrink: 0;
-			font-size: 1.1em;
+			margin-inline-start: 0.4em;
+			font-size: 1em;
 			color: var(--c-text-3);
 		}
 
 		.volume-slider {
 			flex-grow: 1;
-			min-width: 0;
+			min-width: 3rem;
+			max-width: 6rem;
 			accent-color: var(--c-primary);
 		}
+	}
+
+	.play-btn {
+		font-size: 1.6em;
 	}
 }
 
@@ -1337,6 +1375,8 @@ onBeforeUnmount(() => {
 	overscroll-behavior: contain;
 
 	.lyric-line {
+		--word-base: var(--c-text-2);
+
 		padding: 0.35em 0;
 		border-radius: 0.5em;
 		font-size: 0.9em;
@@ -1350,21 +1390,26 @@ onBeforeUnmount(() => {
 		}
 
 		&.active {
+			--word-base: var(--c-text-1);
+
 			color: var(--c-text-1);
 		}
 
 		.word {
-			transition: color 0.25s;
+			transition: color 0.2s;
 		}
 
-		.word.on {
-			background: linear-gradient(90deg, var(--c-primary), var(--c-accent), var(--c-primary));
-			background-position: 0 0;
-			background-size: 200% 100%;
+		// 唱过的词：纯主色
+		.word.sung {
+			color: var(--c-primary);
+		}
+
+		// 正在唱的词：按词内进度做蓝色→基础色的渐变填充
+		.word.current {
+			background-image: linear-gradient(to right, var(--c-primary) var(--p, 0%), var(--word-base) var(--p, 0%));
 			background-clip: text;
 			-webkit-background-clip: text;
 			color: transparent;
-			animation: lyric-flow 1.6s linear infinite;
 		}
 
 		.trans {
@@ -1452,12 +1497,23 @@ onBeforeUnmount(() => {
 	font-size: 1.15em;
 }
 
-/* 常驻歌词区：展开/收起动画，占胶囊中部 */
-.capsule-lyric {
-	flex-grow: 1;
+/* 常驻歌词区：外层宽度过渡实现胶囊伸缩动画，占胶囊中部 */
+.capsule-strip {
 	overflow: hidden;
-	min-width: 0;
-	max-width: min(18rem, 55vw);
+	width: 0;
+	opacity: 0;
+	transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+
+	&.open {
+		width: min(18rem, 55vw);
+		opacity: 1;
+	}
+}
+
+.capsule-lyric {
+	display: block;
+	overflow: hidden;
+	width: min(18rem, 55vw);
 	padding: 0.1em 0.6em;
 	border-radius: 1rem;
 	background-color: transparent;
@@ -1481,17 +1537,20 @@ onBeforeUnmount(() => {
 		color: var(--c-text-1);
 
 		.strip-word {
-			transition: color 0.25s;
+			transition: color 0.2s;
 		}
 
-		.strip-word.on {
-			background: linear-gradient(90deg, var(--c-primary), var(--c-accent), var(--c-primary));
-			background-position: 0 0;
-			background-size: 200% 100%;
+		// 唱过的词：纯主色
+		.strip-word.sung {
+			color: var(--c-primary);
+		}
+
+		// 正在唱的词：按词内进度做蓝色→基础色的渐变填充
+		.strip-word.current {
+			background-image: linear-gradient(to right, var(--c-primary) var(--p, 0%), var(--c-text-1) var(--p, 0%));
 			background-clip: text;
 			-webkit-background-clip: text;
 			color: transparent;
-			animation: lyric-flow 1.6s linear infinite;
 		}
 	}
 
@@ -1510,18 +1569,6 @@ onBeforeUnmount(() => {
 		font-size: 0.8em;
 		color: var(--c-text-3);
 	}
-}
-
-.strip-enter-active,
-.strip-leave-active {
-	transition: max-width 0.3s ease, opacity 0.25s ease, padding 0.3s ease;
-}
-
-.strip-enter-from,
-.strip-leave-to {
-	max-width: 0;
-	padding-inline: 0;
-	opacity: 0;
 }
 
 /* 胶囊下方的细进度线：宽度随胶囊伸缩 */
@@ -1548,26 +1595,14 @@ onBeforeUnmount(() => {
 	}
 }
 
-@keyframes lyric-flow {
-	to {
-		background-position: -200% 0;
-	}
-}
-
 @media (prefers-reduced-motion: reduce) {
 	.cover-disc.spinning {
 		animation: none;
 	}
 
-	.word.on,
-	.strip-word.on {
-		animation: none;
-	}
-
 	.lyric-pane-enter-active,
 	.lyric-pane-leave-active,
-	.strip-enter-active,
-	.strip-leave-active {
+	.capsule-strip {
 		transition: opacity 0.2s;
 	}
 }
