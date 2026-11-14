@@ -1,12 +1,17 @@
 <script setup lang="ts">
 /**
- * 全局音乐播放器（悬浮胶囊）。
- * - 数据统一走站内代理 /api/meting（服务端转发，无 CORS/JSONP 问题）
- * - 歌词优先走站内代理 /api/lyric（网易云官方接口）
+ * 全局音乐播放器。
+ * 交互模型：
+ * - 默认胶囊 = 封面 + 播放按钮，胶囊下方一条细线显示播放进度
+ * - 点击封面 → 展开歌单详情面板（点击外部/ESC 回收）
+ * - 面板头部“歌词”按钮 → 歌词页向右展开，胶囊顺势拉长、中部常驻显示当前歌词
+ * - 关闭详情面板后，含歌词的胶囊保留（歌词常驻），点击胶囊歌词区可重新打开详情
+ *
+ * 技术约定：
+ * - 数据统一走站内代理 /api/meting 与 /api/lyric，无 CORS/JSONP 问题
  * - 逐字歌词：有 YRC 用官方逐字时间轴；没有时按行时长 + 字符权重合成节奏
  * - 播放进度 / 时间标签 / 逐字高亮这类高频更新只改 DOM，不进 Vue 响应式
- * - 进度条支持拖动（预览 + 松手落点）与键盘微调
- * - 歌单缓存 30 分钟（sessionStorage），进度只在离开页面时落盘，恢复时不自动播放
+ * - 进度条支持拖动（预览 + 松手落点）与键盘微调；歌词行点击可跳转到对应时间
  */
 
 interface Song {
@@ -36,6 +41,7 @@ const music = appConfig.music
 const STORAGE_MODE = 'music-player.mode'
 const STORAGE_VOLUME = 'music-player.volume'
 const STORAGE_PROGRESS = 'music-player.progress'
+const STORAGE_LYRIC = 'music-player.lyrics'
 const PLAYLIST_CACHE = `music-player.playlist-${music.playlistId}`
 const CACHE_TTL = 30 * 60 * 1000
 
@@ -48,17 +54,20 @@ const currentIdx = ref(-1)
 const playing = ref(false)
 const mode = ref<PlayMode>('list')
 const expanded = ref(false)
-const tab = ref<'list' | 'lyric'>('list')
+const lyricMode = ref(false)
 const volume = ref(music.defaultVolume ?? 0.6)
-const muted = ref(false)
 const lrcLines = ref<LrcLine[]>([])
 const lrcIndex = ref(-1)
+// 胶囊常驻歌词区的逐字高亮（只有当前行，响应式开销极小）
+const stripWordIdx = ref(-1)
 
+const rootEl = useTemplateRef<HTMLDivElement>('root')
 const audioEl = useTemplateRef<HTMLAudioElement>('audio')
 const fillEl = useTemplateRef<HTMLDivElement>('fill')
 const thumbEl = useTemplateRef<HTMLDivElement>('thumb')
 const curTimeEl = useTemplateRef<HTMLSpanElement>('cur-time')
 const durEl = useTemplateRef<HTMLSpanElement>('dur')
+const lineFillEl = useTemplateRef<HTMLDivElement>('line-fill')
 const lyricsEl = useTemplateRef<HTMLDivElement>('lyrics')
 
 let currentSec = 0
@@ -66,13 +75,16 @@ let pendingSeek = 0
 let lrcFetchSeq = 0
 // 音频出错兜底时是否恢复播放（selectSong 的 autoplay 意图）
 let keepPlaying = false
-// 逐字高亮与拖动的非响应式状态（直接操作 DOM）
-let prevLineIdx = -1
-let prevWordIdx = -1
+// 歌词页逐字高亮与拖动的非响应式状态（直接操作 DOM）
+let prevPaneLine = -1
+let prevPaneWord = -1
 let dragging = false
 let dragRatio = 0
 
 const currentSong = computed(() => songs.value[currentIdx.value])
+const currentLine = computed(() => lrcLines.value[lrcIndex.value])
+
+// ---------- 数据加载 ----------
 
 function extractId(song: any): string {
 	if (song?.id)
@@ -175,8 +187,7 @@ function persistProgress() {
 
 /**
  * 音频直链：直接使用 Meting url 端点（服务端 302 到真实 mp3，
- * audio 标签会跟随重定向，无需 CORS/JSONP）。播放失败时由 onAudioError
- * 兜底为网易云官方外链。
+ * audio 标签会跟随重定向）。播放失败时由 onAudioError 兜底为官方外链。
  */
 function resolveUrl(song: Song): string {
 	return `${music.apiBase}?server=netease&type=url&id=${song.id}`
@@ -364,8 +375,9 @@ async function loadLyrics(song: Song) {
 	const seq = ++lrcFetchSeq
 	lrcLines.value = []
 	lrcIndex.value = -1
-	prevLineIdx = -1
-	prevWordIdx = -1
+	stripWordIdx.value = -1
+	prevPaneLine = -1
+	prevPaneWord = -1
 	try {
 		const payload = await fetchLyricPayload(song)
 		if (seq !== lrcFetchSeq || !payload)
@@ -383,22 +395,21 @@ async function loadLyrics(song: Song) {
 	}
 }
 
-/** 直接操作 DOM 切换逐字高亮，避免整棵歌词树重渲染 */
-function updateWordHighlight(lineIdx: number, wordIdx: number) {
+/** 歌词页的逐字高亮：直接操作 DOM，避免整棵歌词树重渲染 */
+function updatePaneHighlight(lineIdx: number, wordIdx: number) {
 	const container = lyricsEl.value
 	if (!container)
 		return
-	const lineChanged = lineIdx !== prevLineIdx
-	if (lineChanged)
+	if (lineIdx !== prevPaneLine)
 		container.querySelectorAll('.word.on').forEach(el => el.classList.remove('on'))
-	else if (prevWordIdx >= 0 && wordIdx !== prevWordIdx)
+	else if (prevPaneWord >= 0 && wordIdx !== prevPaneWord)
 		container.querySelectorAll(`.lyric-line[data-line="${lineIdx}"] .word.on`).forEach(el => el.classList.remove('on'))
 	if (wordIdx >= 0) {
 		const target = container.querySelector(`.lyric-line[data-line="${lineIdx}"] .word[data-wi="${wordIdx}"]`)
 		target?.classList.add('on')
 	}
-	prevLineIdx = lineIdx
-	prevWordIdx = wordIdx
+	prevPaneLine = lineIdx
+	prevPaneWord = wordIdx
 }
 
 // ---------- 播放控制 ----------
@@ -424,7 +435,7 @@ async function selectSong(song: Song, autoplay: boolean) {
 	audio.src = resolveUrl(song)
 	audio.load()
 	if (autoplay) {
-		audio.volume = muted.value ? 0 : volume.value
+		audio.volume = volume.value
 		audio.play().catch(() => {})
 	}
 }
@@ -511,7 +522,7 @@ function onEnded() {
 	stepNext()
 }
 
-/** 高频更新只动 DOM：进度条、时间标签、逐字高亮 */
+/** 高频更新只动 DOM：进度条、时间标签、胶囊细线、逐字高亮 */
 function onTimeUpdate() {
 	const audio = audioEl.value
 	if (!audio)
@@ -522,6 +533,8 @@ function onTimeUpdate() {
 		updateFill(currentSec / duration)
 	if (curTimeEl.value)
 		curTimeEl.value.textContent = formatTime(currentSec)
+	if (lineFillEl.value && duration > 0)
+		lineFillEl.value.style.transform = `scaleX(${Math.min(1, currentSec / duration)})`
 
 	// 歌词行与逐字位置只在跨行/跨字时更新
 	let index = -1
@@ -532,9 +545,8 @@ function onTimeUpdate() {
 			break
 		}
 	}
-	if (index !== lrcIndex.value) {
+	if (index !== lrcIndex.value)
 		lrcIndex.value = index
-	}
 	let wordIdx = -1
 	if (index >= 0) {
 		const line = lrcLines.value[index]
@@ -548,8 +560,10 @@ function onTimeUpdate() {
 			}
 		}
 	}
-	if (index !== prevLineIdx || wordIdx !== prevWordIdx)
-		updateWordHighlight(index, wordIdx)
+	if (index !== prevPaneLine || wordIdx !== prevPaneWord)
+		updatePaneHighlight(index, wordIdx)
+	if (wordIdx !== stripWordIdx.value)
+		stripWordIdx.value = wordIdx
 }
 
 function onLoadedMetadata() {
@@ -584,9 +598,7 @@ function updateFill(ratio: number) {
 
 // ---------- 拖动进度条 ----------
 
-function progressRatio(e: PointerEvent | KeyboardEvent, el: HTMLElement): number {
-	if (e instanceof KeyboardEvent)
-		return 0
+function progressRatio(e: PointerEvent, el: HTMLElement): number {
 	const rect = el.getBoundingClientRect()
 	return Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
 }
@@ -633,8 +645,8 @@ function onProgressKey(e: KeyboardEvent) {
 	const audio = audioEl.value
 	if (!audio || !audio.duration)
 		return
-	const step = e.key === 'ArrowLeft' ? -5 : e.key === 'ArrowRight' ? 5 : 0
-	if (!step && e.key !== 'Home' && e.key !== 'End')
+	const stepSeconds = e.key === 'ArrowLeft' ? -5 : e.key === 'ArrowRight' ? 5 : 0
+	if (!stepSeconds && e.key !== 'Home' && e.key !== 'End')
 		return
 	e.preventDefault()
 	if (e.key === 'Home')
@@ -642,10 +654,21 @@ function onProgressKey(e: KeyboardEvent) {
 	else if (e.key === 'End')
 		audio.currentTime = audio.duration - 0.5
 	else
-		audio.currentTime = Math.min(Math.max(0, audio.currentTime + step), audio.duration - 0.5)
+		audio.currentTime = Math.min(Math.max(0, audio.currentTime + stepSeconds), audio.duration - 0.5)
 }
 
-function seek(e: MouseEvent) {
+/** 点击某行歌词跳转到对应时间并开始播放 */
+function seekToLine(time: number) {
+	const audio = audioEl.value
+	if (!audio)
+		return
+	audio.currentTime = time
+	if (audio.paused)
+		audio.play().catch(() => {})
+}
+
+/** 点击进度条（非拖动）定位 */
+function onProgressClick(e: MouseEvent) {
 	const audio = audioEl.value
 	const target = e.currentTarget as HTMLElement
 	if (!audio || !audio.duration)
@@ -653,6 +676,25 @@ function seek(e: MouseEvent) {
 	const rect = target.getBoundingClientRect()
 	const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
 	audio.currentTime = ratio * audio.duration
+}
+
+// 歌词页重新挂载后，高亮状态需要重放
+watch([lyricMode, expanded], () => {
+	prevPaneLine = -1
+	prevPaneWord = -1
+})
+
+const modeTip = computed(() => ({
+	list: '列表循环',
+	single: '单曲循环',
+	random: '随机播放',
+})[mode.value])
+
+// ---------- 歌词常驻区 ----------
+
+function toggleLyric() {
+	lyricMode.value = !lyricMode.value
+	localStorage.setItem(STORAGE_LYRIC, lyricMode.value ? '1' : '0')
 }
 
 // ---------- 系统媒体会话 ----------
@@ -672,15 +714,20 @@ function updateMediaSession() {
 	})
 }
 
-/** 歌词自动滚动：跨行时把当前行挪到容器中间 */
+/** 歌词页自动滚动：跨行时把当前行平滑挪到容器中间 */
 watch(lrcIndex, async (index) => {
 	if (index < 0)
 		return
 	await nextTick()
 	const container = lyricsEl.value
 	const active = container?.querySelector('.lyric-line.active') as HTMLElement | null
-	if (container && active)
-		container.scrollTop = active.offsetTop - container.clientHeight / 2
+	if (container && active) {
+		const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
+		container.scrollTo({
+			top: active.offsetTop - container.clientHeight / 2,
+			behavior: reduceMotion ? 'auto' : 'smooth',
+		})
+	}
 })
 
 watch(volume, (value) => {
@@ -700,13 +747,6 @@ watch(() => currentSong.value, (song) => {
 		localStorage.setItem(STORAGE_PROGRESS, JSON.stringify({ songId: song.id, time: 0, at: Date.now() }))
 })
 
-function toggleMute() {
-	muted.value = !muted.value
-	const audio = audioEl.value
-	if (audio)
-		audio.volume = muted.value ? 0 : volume.value
-}
-
 onMounted(() => {
 	const savedMode = localStorage.getItem(STORAGE_MODE)
 	if (savedMode === 'list' || savedMode === 'single' || savedMode === 'random')
@@ -714,6 +754,7 @@ onMounted(() => {
 	const savedVolume = Number(localStorage.getItem(STORAGE_VOLUME))
 	if (Number.isFinite(savedVolume) && savedVolume >= 0 && savedVolume <= 1)
 		volume.value = savedVolume
+	lyricMode.value = localStorage.getItem(STORAGE_LYRIC) === '1'
 
 	if ('mediaSession' in navigator) {
 		navigator.mediaSession.setActionHandler('play', () => togglePlay())
@@ -721,6 +762,19 @@ onMounted(() => {
 		navigator.mediaSession.setActionHandler('previoustrack', () => step(-1))
 		navigator.mediaSession.setActionHandler('nexttrack', stepNext)
 	}
+
+	// 详情面板：点击外部或按 ESC 回收
+	useEventListener(document, 'pointerdown', (e) => {
+		if (!expanded.value)
+			return
+		const root = rootEl.value
+		if (root && e.target instanceof Node && !root.contains(e.target))
+			expanded.value = false
+	})
+	useEventListener(window, 'keydown', (e) => {
+		if (e.key === 'Escape' && expanded.value)
+			expanded.value = false
+	})
 
 	// 离开页面时保存进度（只在此处落盘，装载时不写）
 	useEventListener(window, 'pagehide', persistProgress)
@@ -732,174 +786,205 @@ onBeforeUnmount(() => {
 	if ('mediaSession' in navigator)
 		navigator.mediaSession.metadata = null
 })
-
-// 歌单图标随播放模式变化
-const modeIcon = computed(() => ({
-	list: 'tabler:repeat',
-	single: 'tabler:repeat-once',
-	random: 'tabler:shuffle',
-})[mode.value])
-
-const modeTip = computed(() => ({
-	list: '列表循环',
-	single: '单曲循环',
-	random: '随机播放',
-})[mode.value])
 </script>
 
 <template>
-<div class="music-player" :class="{ expanded }">
+<div ref="root" class="music-player" :class="{ expanded }">
+	<!-- 详情面板：歌单 + 控制，歌词页向右展开 -->
 	<Transition name="panel">
-		<section v-if="expanded" class="music-panel" aria-label="音乐播放器">
-			<header class="panel-header">
-				<div class="now-cover">
-					<img v-if="currentSong?.pic" :src="currentSong.pic" alt="" loading="lazy" referrerpolicy="no-referrer">
-					<Icon v-else name="tabler:music" />
-				</div>
-				<div class="now-info">
-					<p class="now-name">
-						{{ currentSong?.name || (status === 'error' ? '歌单加载失败' : status === 'loading' ? '歌单加载中…' : '音乐播放器') }}
-					</p>
-					<p class="now-artist">
-						{{ currentSong?.artist || (songs.length ? `${songs.length} 首歌曲` : 'Meting · 网易云') }}
-					</p>
-				</div>
-				<button class="icon-btn" aria-label="收起播放器" @click="expanded = false">
-					<Icon name="tabler:chevron-down" />
-				</button>
-			</header>
-
-			<div v-if="status === 'error'" class="panel-message">
-				<p>歌单加载失败，请稍后重试</p>
-				<button class="retry-btn" @click="loadPlaylist">
-					<Icon name="tabler:refresh" />
-					重新加载
-				</button>
-			</div>
-
-			<template v-else>
-				<div class="panel-tabs" role="tablist">
-					<button :class="{ active: tab === 'list' }" role="tab" @click="tab = 'list'">
-						<Icon name="tabler:playlist" />
-						歌单
-					</button>
-					<button :class="{ active: tab === 'lyric' }" role="tab" @click="tab = 'lyric'">
-						<Icon name="tabler:microphone" />
-						歌词
-					</button>
-				</div>
-
-				<ul v-if="tab === 'list'" class="playlist scrollcheck-y scrollbar-hidden">
-					<li v-for="(song, index) in songs" :key="song.id">
-						<button
-							class="song-row"
-							:class="{ active: index === currentIdx }"
-							@click="playAt(index)"
-						>
-							<span class="song-index">{{ index + 1 }}</span>
-							<span class="song-name">{{ song.name }}</span>
-							<span class="song-artist">{{ song.artist }}</span>
-							<Icon v-if="index === currentIdx && playing" class="song-playing" name="tabler:volume" />
-						</button>
-					</li>
-				</ul>
-
-				<div v-else ref="lyrics" class="lyrics scrollcheck-y scrollbar-hidden">
-					<p v-if="!lrcLines.length" class="lyric-empty">
-						{{ status === 'loading' ? '加载中…' : '暂无歌词，纯音乐也动人' }}
-					</p>
-					<template v-else>
-						<p
-							v-for="(line, index) in lrcLines"
-							:key="`${line.time}-${index}`"
-							class="lyric-line"
-							:class="{ active: index === lrcIndex }"
-							:data-line="index"
-						>
-							<template v-if="line.words.length">
-								<span
-									v-for="(word, wordIndex) in line.words"
-									:key="wordIndex"
-									class="word"
-									:data-wi="wordIndex"
-								>{{ word.text }}</span>
-							</template>
-							<template v-else>
-								{{ line.text }}
-							</template>
-							<span v-if="line.trans" class="trans">{{ line.trans }}</span>
+		<div v-if="expanded" class="panel-wrap">
+			<section class="music-panel">
+				<header class="panel-header">
+					<div class="now-cover">
+						<img v-if="currentSong?.pic" :src="currentSong.pic" alt="" loading="lazy" referrerpolicy="no-referrer">
+						<Icon v-else name="tabler:music" />
+					</div>
+					<div class="now-info">
+						<p class="now-name">
+							{{ currentSong?.name || (status === 'error' ? '歌单加载失败' : status === 'loading' ? '歌单加载中…' : '音乐播放器') }}
 						</p>
-					</template>
+						<p class="now-artist">
+							{{ currentSong?.artist || (songs.length ? `${songs.length} 首歌曲` : 'Meting · 网易云') }}
+						</p>
+					</div>
+					<button
+						class="icon-btn lyric-toggle"
+						:class="{ active: lyricMode }"
+						title="歌词常驻"
+						aria-label="开关歌词"
+						@click="toggleLyric"
+					>
+						<Icon name="tabler:microphone" />
+					</button>
+					<button class="icon-btn" aria-label="收起播放器" @click="expanded = false">
+						<Icon name="tabler:chevron-down" />
+					</button>
+				</header>
+
+				<div v-if="status === 'error'" class="panel-message">
+					<p>歌单加载失败，请稍后重试</p>
+					<button class="retry-btn" @click="loadPlaylist">
+						<Icon name="tabler:refresh" />
+						重新加载
+					</button>
 				</div>
 
-				<footer class="panel-controls">
-					<div
-						class="progress"
-						role="slider"
-						tabindex="0"
-						aria-label="播放进度，左右方向键微调"
-						@pointerdown="onProgressDown"
-						@pointermove="onProgressMove"
-						@pointerup="onProgressUp"
-						@keydown="onProgressKey"
-						@click="seek"
-					>
-						<div ref="fill" class="progress-fill" />
-						<div ref="thumb" class="progress-thumb" />
-					</div>
+				<template v-else>
+					<ul class="playlist scrollcheck-y scrollbar-hidden">
+						<li v-for="(song, index) in songs" :key="song.id">
+							<button
+								class="song-row"
+								:class="{ active: index === currentIdx }"
+								@click="playAt(index)"
+							>
+								<span class="song-index">{{ index + 1 }}</span>
+								<span class="song-name">{{ song.name }}</span>
+								<span class="song-artist">{{ song.artist }}</span>
+								<Icon v-if="index === currentIdx && playing" class="song-playing" name="tabler:volume" />
+							</button>
+						</li>
+					</ul>
 
-					<div class="control-row">
-						<button class="icon-btn" :title="modeTip" aria-label="切换播放模式" @click="cycleMode">
-							<Icon :name="modeIcon" />
-						</button>
-						<button class="icon-btn" aria-label="上一首" @click="step(-1)">
-							<Icon name="tabler:player-skip-back-filled" />
-						</button>
-						<button class="icon-btn play-btn" aria-label="播放/暂停" @click="togglePlay">
-							<Icon :name="playing ? 'tabler:player-pause-filled' : 'tabler:player-play-filled'" />
-						</button>
-						<button class="icon-btn" aria-label="下一首" @click="stepNext">
-							<Icon name="tabler:player-skip-forward-filled" />
-						</button>
-						<button class="icon-btn" :title="muted ? '取消静音' : '静音'" aria-label="静音开关" @click="toggleMute">
-							<Icon :name="muted || !volume ? 'tabler:volume-3' : 'tabler:volume'" />
-						</button>
-					</div>
+					<footer class="panel-controls">
+						<!-- 进度条：左边已播放时间，右边总时间 -->
+						<div class="progress-row">
+							<span ref="cur-time" class="time-label">0:00</span>
+							<div
+								class="progress"
+								role="slider"
+								tabindex="0"
+								aria-label="播放进度，左右方向键微调"
+								@pointerdown="onProgressDown"
+								@pointermove="onProgressMove"
+								@pointerup="onProgressUp"
+								@keydown="onProgressKey"
+								@click="onProgressClick"
+							>
+								<div ref="fill" class="progress-fill" />
+								<div ref="thumb" class="progress-thumb" />
+							</div>
+							<span ref="dur" class="time-label">0:00</span>
+						</div>
 
-					<div class="time-volume">
-						<span ref="cur-time" class="time-label">0:00</span>
-						<span class="time-label">/</span>
-						<span ref="dur" class="time-label">0:00</span>
-						<input
-							v-model.number="volume"
-							class="volume-slider"
-							type="range"
-							min="0"
-							max="1"
-							step="0.05"
-							aria-label="音量"
-						>
+						<div class="control-row">
+							<button class="icon-btn" :title="modeTip" aria-label="切换播放模式" @click="cycleMode">
+								<Icon v-if="mode === 'list'" name="tabler:repeat" />
+								<Icon v-else-if="mode === 'single'" name="tabler:repeat-once" />
+								<Icon v-else name="tabler:shuffle" />
+							</button>
+							<button class="icon-btn" aria-label="上一首" @click="step(-1)">
+								<Icon name="tabler:player-skip-back-filled" />
+							</button>
+							<button class="icon-btn play-btn" aria-label="播放/暂停" @click="togglePlay">
+								<Icon :name="playing ? 'tabler:player-pause-filled' : 'tabler:player-play-filled'" />
+							</button>
+							<button class="icon-btn" aria-label="下一首" @click="stepNext">
+								<Icon name="tabler:player-skip-forward-filled" />
+							</button>
+						</div>
+
+						<!-- 音量：喇叭图标 + 音量条（静音直接拖到 0） -->
+						<div class="volume-row">
+							<Icon class="volume-icon" name="tabler:volume" />
+							<input
+								v-model.number="volume"
+								class="volume-slider"
+								type="range"
+								min="0"
+								max="1"
+								step="0.05"
+								aria-label="音量"
+							>
+						</div>
+					</footer>
+				</template>
+			</section>
+
+			<!-- 歌词页：向右展开 -->
+			<Transition name="lyric-pane">
+				<aside v-if="lyricMode" class="lyric-pane">
+					<div ref="lyrics" class="lyrics scrollcheck-y scrollbar-hidden">
+						<p v-if="!lrcLines.length" class="lyric-empty">
+							{{ status === 'loading' ? '加载中…' : '暂无歌词，纯音乐也动人' }}
+						</p>
+						<template v-else>
+							<p
+								v-for="(line, index) in lrcLines"
+								:key="`${line.time}-${index}`"
+								class="lyric-line"
+								:class="{ active: index === lrcIndex }"
+								:data-line="index"
+								:title="`跳转到 ${formatTime(line.time)}`"
+								@click="seekToLine(line.time)"
+							>
+								<template v-if="line.words.length">
+									<span
+										v-for="(word, wordIndex) in line.words"
+										:key="wordIndex"
+										class="word"
+										:data-wi="wordIndex"
+									>{{ word.text }}</span>
+								</template>
+								<template v-else>
+									{{ line.text }}
+								</template>
+								<span v-if="line.trans" class="trans">{{ line.trans }}</span>
+							</p>
+						</template>
 					</div>
-				</footer>
-			</template>
-		</section>
+				</aside>
+			</Transition>
+		</div>
 	</Transition>
 
-	<button
-		class="capsule"
-		:aria-label="expanded ? '收起播放器' : '打开播放器'"
-		:aria-expanded="expanded"
-		@click="expanded = !expanded"
-	>
-		<div class="capsule-cover" :class="{ spinning: playing }">
-			<img v-if="currentSong?.pic" :src="currentSong.pic" alt="" loading="lazy" referrerpolicy="no-referrer">
-			<Icon v-else-if="status === 'error'" name="tabler:music-off" />
-			<Icon v-else name="tabler:music" />
+	<!-- 胶囊：封面 | 歌词常驻区 | 播放按钮 + 底部细进度线 -->
+	<div class="capsule-area">
+		<div class="capsule" :class="{ 'lyric-mode': lyricMode }">
+			<button
+				class="capsule-cover"
+				:aria-label="expanded ? '收起歌单详情' : '打开歌单详情'"
+				:aria-expanded="expanded"
+				@click="expanded = !expanded"
+			>
+				<div class="cover-disc" :class="{ spinning: playing }">
+					<img v-if="currentSong?.pic" :src="currentSong.pic" alt="" loading="lazy" referrerpolicy="no-referrer">
+					<Icon v-else-if="status === 'error'" name="tabler:music-off" />
+					<Icon v-else name="tabler:music" />
+				</div>
+			</button>
+
+			<!-- 常驻歌词：详情面板关闭后仍然保留；点击可重新打开详情 -->
+			<Transition name="strip">
+				<button v-if="lyricMode" class="capsule-lyric" aria-label="打开歌词详情" @click="expanded = true">
+					<template v-if="currentLine">
+						<span class="strip-line">
+							<template v-if="currentLine.words.length">
+								<span
+									v-for="(word, wordIndex) in currentLine.words"
+									:key="wordIndex"
+									class="strip-word"
+									:class="{ on: wordIndex === stripWordIdx }"
+								>{{ word.text }}</span>
+							</template>
+							<template v-else>{{ currentLine.text }}</template>
+						</span>
+						<span v-if="currentLine.trans" class="strip-trans">{{ currentLine.trans }}</span>
+					</template>
+					<span v-else class="strip-empty">
+						{{ status === 'loading' ? '歌词加载中…' : '暂无歌词' }}
+					</span>
+				</button>
+			</Transition>
+
+			<button class="capsule-play" aria-label="播放/暂停" @click="togglePlay">
+				<Icon :name="playing ? 'tabler:player-pause-filled' : 'tabler:player-play-filled'" />
+			</button>
 		</div>
-		<span v-if="playing" class="capsule-wave">
-			<i /><i /><i />
-		</span>
-	</button>
+
+		<div class="capsule-progress" aria-hidden="true">
+			<div ref="line-fill" class="capsule-progress-fill" />
+		</div>
+	</div>
 
 	<audio
 		ref="audio"
@@ -922,15 +1007,23 @@ const modeTip = computed(() => ({
 	z-index: 90; // 低于弹窗层，避免盖住侧栏遮罩
 }
 
-.music-panel {
+.panel-wrap {
 	position: absolute;
 	inset-inline-start: 0;
 	bottom: calc(100% + 0.8rem);
 	display: flex;
+	gap: 0.6rem;
+	align-items: stretch;
+	max-width: calc(100vw - 2rem);
+}
+
+.music-panel {
+	display: flex;
+	flex-shrink: 1;
 	flex-direction: column;
 	overflow: hidden;
 	width: 20rem;
-	max-width: calc(100vw - 2rem);
+	min-width: 14rem;
 	max-height: min(70vh, 36rem);
 	border: 1px solid var(--c-border);
 	border-radius: 1rem;
@@ -999,44 +1092,20 @@ const modeTip = computed(() => ({
 			color: var(--c-text-2);
 		}
 	}
-}
 
-.panel-tabs {
-	display: flex;
-	gap: 0.4em;
-	padding: 0 0.8em 0.5em;
-
-	button {
-		display: flex;
-		gap: 0.3em;
-		align-items: center;
-		padding: 0.25em 0.7em;
-		border-radius: 2em;
-		background-color: var(--c-bg-2);
-		font: inherit;
-		font-size: 0.85em;
-		color: var(--c-text-2);
-		cursor: pointer;
-		transition: all 0.2s;
-
-		&.active {
-			background-color: var(--ld-bg-active);
-			color: var(--c-primary);
-		}
+	.lyric-toggle.active {
+		background-color: var(--ld-bg-active);
+		color: var(--c-primary);
 	}
 }
 
-.playlist,
-.lyrics {
+.playlist {
 	flex: 1 1 auto;
 	overflow: auto;
 	min-height: 10rem;
-	overscroll-behavior: contain;
-}
-
-.playlist {
-	list-style: none;
 	padding: 0 0.6em;
+	list-style: none;
+	overscroll-behavior: contain;
 
 	.song-row {
 		display: flex;
@@ -1096,44 +1165,6 @@ const modeTip = computed(() => ({
 	}
 }
 
-.lyrics {
-	padding: 0.5em 1em;
-	text-align: center;
-
-	.lyric-line {
-		padding: 0.35em 0;
-		font-size: 0.9em;
-		line-height: 1.6;
-		color: var(--c-text-2);
-		transition: color 0.2s, transform 0.2s;
-
-		&.active {
-			color: var(--c-text-1);
-			transform: scale(1.02);
-		}
-
-		.word {
-			transition: color 0.25s;
-
-			&.on {
-				color: var(--c-primary);
-			}
-		}
-
-		.trans {
-			display: block;
-			margin-top: 0.15em;
-			font-size: 0.85em;
-			opacity: 0.75;
-		}
-	}
-
-	.lyric-empty {
-		padding-top: 3em;
-		color: var(--c-text-3);
-	}
-}
-
 .panel-message {
 	display: flex;
 	flex: 1 1 auto;
@@ -1161,50 +1192,64 @@ const modeTip = computed(() => ({
 	padding: 0.6em 0.8em 0.7em;
 	border-top: 1px solid var(--c-border);
 
-	.progress {
-		position: relative;
-		height: 1.2em;
-		border-radius: 1em;
-		cursor: pointer;
-		touch-action: none; // 拖动时不触发页面滚动
+	.progress-row {
+		display: flex;
+		gap: 0.6em;
+		align-items: center;
 
-		&:focus-visible {
-			outline: 2px solid var(--c-primary-soft);
+		.time-label {
+			flex-shrink: 0;
+			font-size: 0.75em;
+			font-variant-numeric: tabular-nums;
+			color: var(--c-text-3);
 		}
 
-		.progress-fill {
-			position: absolute;
-			inset-block: 50%;
-			transform: translateY(-50%);
-			width: 0;
-			height: 0.4em;
+		.progress {
+			position: relative;
+			flex-grow: 1;
+			height: 1.2em;
 			border-radius: 1em;
-			background-color: var(--c-primary);
-			pointer-events: none;
-			transition: height 0.15s;
-		}
+			cursor: pointer;
+			touch-action: none; // 拖动时不触发页面滚动
 
-		.progress-thumb {
-			position: absolute;
-			inset-block: 50%;
-			transform: translate(-50%, -50%) scale(0);
-			width: 0.9em;
-			height: 0.9em;
-			border-radius: 50%;
-			background-color: var(--c-primary);
-			box-shadow: var(--box-shadow-1);
-			pointer-events: none;
-			transition: transform 0.15s;
-		}
+			&:focus-visible {
+				outline: 2px solid var(--c-primary-soft);
+			}
 
-		&:hover,
-		&:focus-visible {
 			.progress-fill {
-				height: 0.55em;
+				position: absolute;
+				inset-block: 50%;
+				transform: translateY(-50%);
+				width: 0;
+				height: 0.4em;
+				border-radius: 1em;
+				background-color: var(--c-primary);
+				pointer-events: none;
+				transition: height 0.15s;
 			}
 
 			.progress-thumb {
-				transform: translate(-50%, -50%) scale(1);
+				position: absolute;
+				inset-block: 50%;
+				transform: translate(-50%, -50%) scale(0);
+				width: 0.9em;
+				height: 0.9em;
+				border-radius: 50%;
+				background-color: var(--c-primary);
+				box-shadow: var(--box-shadow-1);
+				pointer-events: none;
+				transition: transform 0.15s;
+			}
+
+			&:hover,
+			&:focus-visible {
+				.progress-fill {
+					height: 0.55em;
+				}
+
+				.progress-thumb {
+					transform: translate(-50%, -50%) scale(1);
+				}
 			}
 		}
 	}
@@ -1220,14 +1265,14 @@ const modeTip = computed(() => ({
 		font-size: 1.6em;
 	}
 
-	.time-volume {
+	.volume-row {
 		display: flex;
 		gap: 0.5em;
 		align-items: center;
 
-		.time-label {
+		.volume-icon {
 			flex-shrink: 0;
-			font-size: 0.75em;
+			font-size: 1.1em;
 			color: var(--c-text-3);
 		}
 
@@ -1257,28 +1302,128 @@ const modeTip = computed(() => ({
 	}
 }
 
+/* ---------- 歌词页（向右展开） ---------- */
+
+.lyric-pane {
+	flex-shrink: 1;
+	overflow: hidden;
+	width: 17rem;
+	min-width: 10rem;
+	max-height: min(70vh, 36rem);
+	border: 1px solid var(--c-border);
+	border-radius: 1rem;
+	background-color: var(--ld-bg-blur);
+	backdrop-filter: blur(0.5rem);
+	box-shadow: var(--box-shadow-1), var(--box-shadow-3);
+}
+
+.lyric-pane-enter-active,
+.lyric-pane-leave-active {
+	transition: width 0.3s ease, opacity 0.25s ease;
+}
+
+.lyric-pane-enter-from,
+.lyric-pane-leave-to {
+	width: 0;
+	min-width: 0;
+	opacity: 0;
+}
+
+.lyrics {
+	overflow: auto;
+	height: 100%;
+	padding: 0.5em 1em;
+	text-align: center;
+	overscroll-behavior: contain;
+
+	.lyric-line {
+		padding: 0.35em 0;
+		border-radius: 0.5em;
+		font-size: 0.9em;
+		line-height: 1.6;
+		color: var(--c-text-2);
+		cursor: pointer;
+		transition: color 0.2s, background-color 0.2s;
+
+		&:hover {
+			background-color: var(--c-bg-soft);
+		}
+
+		&.active {
+			color: var(--c-text-1);
+		}
+
+		.word {
+			transition: color 0.25s;
+		}
+
+		.word.on {
+			background: linear-gradient(90deg, var(--c-primary), var(--c-accent), var(--c-primary));
+			background-position: 0 0;
+			background-size: 200% 100%;
+			background-clip: text;
+			-webkit-background-clip: text;
+			color: transparent;
+			animation: lyric-flow 1.6s linear infinite;
+		}
+
+		.trans {
+			display: block;
+			margin-top: 0.15em;
+			font-size: 0.85em;
+			opacity: 0.75;
+		}
+	}
+
+	.lyric-empty {
+		padding-top: 3em;
+		color: var(--c-text-3);
+	}
+}
+
+/* ---------- 胶囊 ---------- */
+
+.capsule-area {
+	width: fit-content;
+}
+
 .capsule {
-	position: relative;
-	display: grid;
-	place-items: center;
-	width: 3.2rem;
-	height: 3.2rem;
+	display: flex;
+	gap: 0.25rem;
+	align-items: center;
+	width: fit-content;
 	padding: 0.25rem;
 	border: 1px solid var(--c-border);
-	border-radius: 50%;
+	border-radius: 2rem;
 	background-color: var(--ld-bg-blur);
 	backdrop-filter: blur(0.5rem);
 	box-shadow: var(--box-shadow-1), var(--box-shadow-2);
+}
+
+.capsule-cover,
+.capsule-play {
+	display: grid;
+	flex-shrink: 0;
+	place-items: center;
+	width: 2.7rem;
+	height: 2.7rem;
+	padding: 0;
+	border-radius: 50%;
+	background-color: transparent;
 	color: var(--c-text-2);
 	cursor: pointer;
-	transition: color 0.2s, box-shadow 0.2s;
+	transition: color 0.2s, background-color 0.2s;
 
 	&:hover {
+		background-color: var(--c-bg-soft);
 		color: var(--c-primary);
-		box-shadow: var(--box-shadow-2), var(--box-shadow-3);
 	}
+}
 
-	.capsule-cover {
+.capsule-cover {
+	padding: 0.15rem;
+
+	.cover-disc {
 		width: 100%;
 		height: 100%;
 		overflow: hidden;
@@ -1296,40 +1441,104 @@ const modeTip = computed(() => ({
 		}
 
 		.iconify {
-			padding: 0.7em;
+			padding: 0.6em;
 			width: 100%;
 			height: 100%;
 		}
 	}
+}
 
-	.capsule-wave {
-		position: absolute;
-		right: -0.15em;
-		bottom: -0.15em;
-		display: flex;
-		gap: 2px;
-		align-items: flex-end;
-		height: 0.9em;
-		padding: 0.15em 0.3em;
-		border-radius: 2em;
-		background-color: var(--c-primary);
-		color: var(--c-bg);
+.capsule-play {
+	font-size: 1.15em;
+}
 
-		i {
-			width: 2px;
-			height: 100%;
-			border-radius: 1px;
-			background-color: currentcolor;
-			animation: wave 0.9s ease-in-out infinite;
+/* 常驻歌词区：展开/收起动画，占胶囊中部 */
+.capsule-lyric {
+	flex-grow: 1;
+	overflow: hidden;
+	min-width: 0;
+	max-width: min(18rem, 55vw);
+	padding: 0.1em 0.6em;
+	border-radius: 1rem;
+	background-color: transparent;
+	font: inherit;
+	text-align: start;
+	color: var(--c-text-2);
+	cursor: pointer;
+	transition: background-color 0.2s;
 
-			&:nth-child(2) {
-				animation-delay: 0.15s;
-			}
+	&:hover {
+		background-color: var(--c-bg-soft);
+	}
 
-			&:nth-child(3) {
-				animation-delay: 0.3s;
-			}
+	.strip-line {
+		display: block;
+		overflow: hidden;
+		font-size: 0.85em;
+		line-height: 1.5;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		color: var(--c-text-1);
+
+		.strip-word {
+			transition: color 0.25s;
 		}
+
+		.strip-word.on {
+			background: linear-gradient(90deg, var(--c-primary), var(--c-accent), var(--c-primary));
+			background-position: 0 0;
+			background-size: 200% 100%;
+			background-clip: text;
+			-webkit-background-clip: text;
+			color: transparent;
+			animation: lyric-flow 1.6s linear infinite;
+		}
+	}
+
+	.strip-trans {
+		display: block;
+		overflow: hidden;
+		font-size: 0.75em;
+		line-height: 1.4;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		opacity: 0.75;
+	}
+
+	.strip-empty {
+		display: block;
+		font-size: 0.8em;
+		color: var(--c-text-3);
+	}
+}
+
+.strip-enter-active,
+.strip-leave-active {
+	transition: max-width 0.3s ease, opacity 0.25s ease, padding 0.3s ease;
+}
+
+.strip-enter-from,
+.strip-leave-to {
+	max-width: 0;
+	padding-inline: 0;
+	opacity: 0;
+}
+
+/* 胶囊下方的细进度线：宽度随胶囊伸缩 */
+.capsule-progress {
+	overflow: hidden;
+	height: 3px;
+	margin-top: 4px;
+	border-radius: 1rem;
+	background-color: var(--c-bg-3);
+
+	.capsule-progress-fill {
+		width: 100%;
+		height: 100%;
+		border-radius: inherit;
+		background: linear-gradient(90deg, var(--c-primary), var(--c-accent));
+		transform: scaleX(0);
+		transform-origin: inline-start;
 	}
 }
 
@@ -1339,35 +1548,37 @@ const modeTip = computed(() => ({
 	}
 }
 
-@keyframes wave {
-	0%,
-	100% {
-		transform: scaleY(0.4);
-	}
-
-	50% {
-		transform: scaleY(1);
+@keyframes lyric-flow {
+	to {
+		background-position: -200% 0;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.capsule-cover.spinning,
-	.capsule-wave i {
+	.cover-disc.spinning {
 		animation: none;
 	}
 
-	.progress-thumb,
-	.progress-fill,
-	.lyric-line,
-	.word {
-		transition: none;
+	.word.on,
+	.strip-word.on {
+		animation: none;
+	}
+
+	.lyric-pane-enter-active,
+	.lyric-pane-leave-active,
+	.strip-enter-active,
+	.strip-leave-active {
+		transition: opacity 0.2s;
 	}
 }
 
 @media (max-width: $breakpoint-mobile) {
 	.music-panel {
-		width: min(85vw, 20rem);
-		max-height: min(60vh, 30rem);
+		width: 15rem;
+	}
+
+	.lyric-pane {
+		width: 12rem;
 	}
 }
 </style>
