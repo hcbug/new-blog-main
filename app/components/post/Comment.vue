@@ -184,6 +184,7 @@ onMounted(() => {
 		height: 1.4em;
 		vertical-align: text-bottom;
 	}
+
 	.OwO {
 		.OwO-body {
 			background-color: #E4E5E6 !important; 
@@ -193,7 +194,7 @@ onMounted(() => {
 			padding: 0 !important;
 			overflow: hidden !important; 
 			
-			html.dark & {
+			:global(html.dark) & {
 				background-color: #121314 !important;
 				border-color: rgba(255, 255, 255, 0.08) !important;
 				box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
@@ -205,13 +206,16 @@ onMounted(() => {
 				overflow-y: auto !important;
 				color: #333 !important;
 				
-				html.dark & {
+				:global(html.dark) & {
 					color: #d1d1d1 !important;
 				}
 
 				&::-webkit-scrollbar { width: 6px; }
 				&::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.2); border-radius: 4px; }
-				html.dark &::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.15); }
+				
+				:global(html.dark) &::-webkit-scrollbar-thumb { 
+					background-color: rgba(255, 255, 255, 0.15); 
+				}
 			}
 
 			.OwO-item {
@@ -241,11 +245,11 @@ onMounted(() => {
 				
 				&:hover {
 					z-index: 100; 
-					transform: scale(2) !important;
+					transform: scale(1.5) !important;
 					background-color: #fff !important;
 					box-shadow: 0 4px 16px rgba(0,0,0,0.15);
 					
-					html.dark & {
+					:global(html.dark) & {
 						background-color: #1a1b1e !important;
 						box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.1);
 					}
@@ -261,7 +265,7 @@ onMounted(() => {
 				border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
 				border-radius: 0 0 8px 8px !important; 
 				
-				html.dark & {
+				:global(html.dark) & {
 					background-color: #161618 !important; 
 					border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
 				}
@@ -285,7 +289,7 @@ onMounted(() => {
 						font-weight: 500;
 					}
 
-					html.dark & {
+					:global(html.dark) & {
 						color: #888 !important;
 						&:hover { color: #fff !important; background-color: rgba(255, 255, 255, 0.08) !important; }
 						&.OwO-item-active { color: #fff !important; background-color: rgba(255, 255, 255, 0.15) !important; }
@@ -298,25 +302,30 @@ onMounted(() => {
 	@media screen and (max-width: 768px) {
 		.OwO .OwO-body {
 			.OwO-item {
-				width: 40px !important;
-				height: 40px !important;
+				padding: 2px !important;
 				margin: 2px !important;
 				
 				img {
-					width: 30px !important;
-					height: 30px !important;
+					width: 28px !important;
+					height: 28px !important;
 				}
 
-				&:hover img {
-					transform: scale(1); 
-					padding: 0;
-					background-color: transparent;
-					box-shadow: none;
+				&:hover {
+					transform: none !important;
+					background-color: transparent !important;
+					box-shadow: none !important;
+					
+					:global(html.dark) & {
+						background-color: transparent !important;
+						box-shadow: none !important;
+					}
 				}
 			}
+			
 			.OwO-bar {
 				gap: 4px !important;
 				padding: 8px !important;
+				
 				span {
 					font-size: 12px;
 					padding: 3px 8px !important;
@@ -325,54 +334,6 @@ onMounted(() => {
 		}
 	}
 
-	@media screen and (max-width: 768px) {
-		.OwO .OwO-body {
-			.OwO-item {
-				width: 40px !important;
-				height: 40px !important;
-				margin: 2px !important;
-				
-				img {
-					width: 30px !important;
-					height: 30px !important;
-				}
-			}
-			.OwO-item:hover {
-				background-color: transparent !important; 
-			}
-		}
-	}
-
-	@media screen and (max-width: 768px) {
-		.OwO .OwO-body {
-			.OwO-item {
-				width: 40px !important;
-				height: 40px !important;
-				margin: 2px !important;
-				
-				img {
-					width: 30px !important;
-					height: 30px !important;
-				}
-			}
-			
-			.OwO-item:hover {
-				background-color: transparent;
-			}
-		}
-	}
-
-	@media screen and (max-width: 768px) {
-		.OwO .OwO-body {
-			.OwO-items {
-				grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)) !important;
-				gap: 4px !important;
-			}
-			.OwO-item:hover {
-				background-color: transparent;
-			}
-		}
-	}
 
 	.tk-extras, .tk-footer {
 		font-size: 0.7em;
