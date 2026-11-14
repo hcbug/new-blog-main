@@ -38,7 +38,7 @@ onMounted(fetchGreeting)
 
 	<p v-if="appConfig.visitor.showGreeting" class="greeting-text">
 		<Icon name="tabler:map-pin" />
-		{{ greeting }}
+		<span class="greeting-body">{{ greeting }}</span>
 	</p>
 
 	<p class="announcement-text">
@@ -70,6 +70,10 @@ onMounted(fetchGreeting)
 		flex-shrink: 0;
 		transform: translateY(0.1em);
 		color: var(--c-primary);
+	}
+
+	.greeting-body {
+		white-space: pre-line;
 	}
 }
 

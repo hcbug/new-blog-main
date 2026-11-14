@@ -194,7 +194,7 @@ function countryDesc(nation: string): string {
 		印度: 'Namaste！咖喱的香气隔着屏幕都能闻到',
 		巴西: 'Olá！桑巴的热情我感受到了',
 	}
-	return table[nation] ?? '远方的朋友，欢迎来到洪畅的博客'
+	return table[nation] ?? '远方的朋友'
 }
 
 function provinceDesc(province: string, city: string): string {
@@ -281,7 +281,7 @@ function compose(geo: Geo | null): string {
 	const tail = dist !== null ? `你距离洪畅约 ${dist} 公里` : ''
 	const extra = [desc, tail].filter(Boolean).join('，')
 
-	return `欢迎来自 ${where} 的访客！\n${greet}\n${extra ? `。${extra}` : ''}`
+	return `欢迎来自 ${where} 的访客！\n${greet}${extra ? `\n${extra}` : ''}`
 }
 
 export default defineEventHandler(async (event) => {
