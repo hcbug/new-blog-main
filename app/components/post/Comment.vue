@@ -186,25 +186,49 @@ onMounted(() => {
 	}
 	.OwO {
 		.OwO-body {
+			background-color: #121314 !important;
+			border: 1px solid rgba(255, 255, 255, 0.08) !important;
+			border-radius: 8px !important;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
 			max-height: 350px !important; 
 			overflow-y: auto !important;
-			padding-bottom: 10px !important;
+			padding-bottom: 0 !important;
+			box-sizing: border-box;
+			
+			&::-webkit-scrollbar {
+				width: 6px;
+			}
+			&::-webkit-scrollbar-thumb {
+				background-color: rgba(255, 255, 255, 0.15);
+				border-radius: 4px;
+				&:hover {
+					background-color: rgba(255, 255, 255, 0.3);
+				}
+			}
+			&::-webkit-scrollbar-track {
+				background: transparent;
+			}
+
+			.OwO-items {
+				color: #d1d1d1 !important;
+				padding: 10px !important;
+			}
 
 			.OwO-item {
 				width: 48px !important;  
 				height: 48px !important; 
 				padding: 4px !important;
-				margin: 3px !important;
-				display: inline-flex !important;
+				margin: 3px !important; 
+				display: inline-flex !important; 
 				justify-content: center;
 				align-items: center;
 				vertical-align: middle;
 				box-sizing: border-box;
 				border-radius: 6px;
-				transition: background-color 0.2s;
+				transition: all 0.2s;
 
 				&:hover {
-					background-color: rgba(0, 0, 0, 0.05);
+					background-color: rgba(255, 255, 255, 0.08) !important;
 				}
 				
 				img {
@@ -217,17 +241,48 @@ onMounted(() => {
 			}
 			
 			.OwO-bar {
-				font-size: 14px;
-				padding: 5px 10px;
-				position: sticky;
-				bottom: -10px;
-				background-color: var(--c-bg);
-				z-index: 10;
+				font-size: 13px;
+				padding: 8px 10px;
+				background-color: #161618 !important;
+				border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+				border-radius: 0 0 8px 8px;
 				
 				span {
 					margin-right: 12px;
 					cursor: pointer;
+					color: #888 !important;
+					transition: color 0.2s, background-color 0.2s;
+					padding: 4px 8px;
+					border-radius: 4px;
+					
+					&:hover {
+						color: #fff !important;
+					}
+
+					&.OwO-item-active {
+						color: #fff !important;
+						background-color: rgba(255, 255, 255, 0.1) !important;
+						font-weight: 500;
+					}
 				}
+			}
+		}
+	}
+
+	@media screen and (max-width: 768px) {
+		.OwO .OwO-body {
+			.OwO-item {
+				width: 40px !important;
+				height: 40px !important;
+				margin: 2px !important;
+				
+				img {
+					width: 30px !important;
+					height: 30px !important;
+				}
+			}
+			.OwO-item:hover {
+				background-color: transparent !important; 
 			}
 		}
 	}
