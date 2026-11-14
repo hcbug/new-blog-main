@@ -186,63 +186,68 @@ onMounted(() => {
 	}
 	.OwO {
 		.OwO-body {
-			background-color: #121314 !important; 
-			border: 1px solid rgba(255, 255, 255, 0.08) !important; 
+			background-color: #E4E5E6 !important; 
+			border: 1px solid rgba(0, 0, 0, 0.1) !important; 
 			border-radius: 8px !important; 
-			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
-			display: flex !important;
-			flex-direction: column !important;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+			padding: 0 !important;
+			overflow: hidden !important; 
 			
-			max-height: 400px !important; 
-			overflow: hidden !important;
-			
+			html.dark & {
+				background-color: #121314 !important;
+				border-color: rgba(255, 255, 255, 0.08) !important;
+				box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+			}
+
 			.OwO-items {
-				padding: 15px !important; 
+				padding: 15px !important;
+				max-height: 320px !important;
 				overflow-y: auto !important;
-				flex: 1;
+				color: #333 !important;
 				
+				html.dark & {
+					color: #d1d1d1 !important;
+				}
+
 				&::-webkit-scrollbar { width: 6px; }
-				&::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.15); border-radius: 4px; }
-				&::-webkit-scrollbar-track { background: transparent; }
+				&::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+				html.dark &::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.15); }
 			}
 
 			.OwO-item {
 				position: relative;
-				min-width: 48px !important;  
-				min-height: 48px !important; 
-				padding: 4px 8px !important; 
+				min-width: 44px !important;  
+				min-height: 44px !important; 
+				padding: 4px !important; 
 				margin: 4px !important; 
 				display: inline-flex !important; 
 				justify-content: center;
 				align-items: center;
 				box-sizing: border-box;
 				border-radius: 6px;
-				transition: background-color 0.2s;
-				
 				white-space: nowrap !important;
-				color: #d1d1d1 !important;
-				font-size: 14px;
+				font-size: 16px;
+				
+				transition: transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28), background-color 0.2s !important;
+				transform-origin: center center;
 				
 				img {
-					width: 36px !important;
-					height: 36px !important;
-					max-width: 36px !important;  
-					max-height: 36px !important; 
+					width: 32px !important;
+					height: 32px !important;
+					max-width: 32px !important;  
+					max-height: 32px !important; 
 					object-fit: contain !important; 
-					transition: transform 0.2s, box-shadow 0.2s !important;
-					transform-origin: center center;
 				}
-
+				
 				&:hover {
 					z-index: 100; 
-					background-color: rgba(255, 255, 255, 0.08) !important; 
-					img {
-						transform: scale(2); 
-						background-color: #1a1b1e; 
-						border-radius: 8px;
-						padding: 8px; 
+					transform: scale(2) !important;
+					background-color: #fff !important;
+					box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+					
+					html.dark & {
+						background-color: #1a1b1e !important;
 						box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.1);
-						box-sizing: border-box;
 					}
 				}
 			}
@@ -252,28 +257,38 @@ onMounted(() => {
 				flex-wrap: wrap !important;
 				gap: 6px !important; 
 				padding: 10px !important;
-				background-color: #161618 !important; 
-				border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+				background-color: rgba(0, 0, 0, 0.05) !important; 
+				border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
 				border-radius: 0 0 8px 8px !important; 
-				flex-shrink: 0;
+				
+				html.dark & {
+					background-color: #161618 !important; 
+					border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+				}
 				
 				span {
 					margin: 0 !important;
 					padding: 4px 10px !important;
-					color: #888 !important; 
+					color: #666 !important; 
 					font-size: 13px;
 					border-radius: 6px;
 					cursor: pointer;
 					transition: all 0.2s;
 					
 					&:hover {
-						color: #fff !important;
-						background-color: rgba(255, 255, 255, 0.08) !important;
+						color: #111 !important;
+						background-color: rgba(0, 0, 0, 0.08) !important;
 					}
 					&.OwO-item-active {
-						color: #fff !important; 
-						background-color: rgba(255, 255, 255, 0.15) !important; 
+						color: #111 !important; 
+						background-color: rgba(0, 0, 0, 0.12) !important; 
 						font-weight: 500;
+					}
+
+					html.dark & {
+						color: #888 !important;
+						&:hover { color: #fff !important; background-color: rgba(255, 255, 255, 0.08) !important; }
+						&.OwO-item-active { color: #fff !important; background-color: rgba(255, 255, 255, 0.15) !important; }
 					}
 				}
 			}
