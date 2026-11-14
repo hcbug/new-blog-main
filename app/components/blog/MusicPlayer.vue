@@ -770,7 +770,7 @@ onBeforeUnmount(() => {
 					</div>
 					<div class="now-info">
 						<p
-							v-tip="currentSong ? { content: `${currentSong.name} - ${currentSong.artist}`, delay: 200 } : ''"
+							v-tip="currentSong ? { content: `${currentSong.name} - ${currentSong.artist}`, delay: 800 } : ''"
 							class="now-name"
 						>
 							{{ currentSong?.name || (status === 'error' ? '歌单加载失败' : status === 'loading' ? '歌单加载中…' : '音乐播放器') }}
@@ -805,7 +805,7 @@ onBeforeUnmount(() => {
 					<ul class="playlist scrollcheck-y scrollbar-hidden">
 						<li v-for="(song, index) in songs" :key="song.id">
 							<button
-								v-tip="{ content: `${song.name} - ${song.artist}`, delay: 200 }"
+								v-tip="{ content: `${song.name} - ${song.artist}`, delay: 800 }"
 								class="song-row"
 								:class="{ active: index === currentIdx }"
 								@click="playAt(index)"

@@ -13,6 +13,30 @@ const shareText = `【${appConfig.title}】${props.title}\n\n${
 	new URL(props.path!, appConfig.url).href}`
 
 const { copy, copied } = useCopy(shareText)
+
+const tags = computed(() => props.tags ?? [])
+
+// 评论数：通过 Twikoo 统计接口获取（含楼中楼），失败则不显示
+const commentCount = ref<number | null>(null)
+onMounted(async () => {
+	if (!props.path)
+		return
+	try {
+		const url = new URL(props.path, appConfig.url).href
+		const res = await $fetch<{ code?: number, data?: Record<string, number> }>(appConfig.twikoo.envId, {
+			method: 'POST',
+			body: { event: 'GET_COMMENTS_COUNT', urls: [url], includeReply: true },
+		})
+		if (res?.code === 0 && res.data) {
+			const counts = Object.values(res.data)
+			if (counts.length)
+				commentCount.value = counts.reduce((sum, count) => sum + count, 0)
+		}
+	}
+	catch (e) {
+		console.warn('评论数获取失败', e)
+	}
+})
 </script>
 
 <template>
@@ -48,6 +72,16 @@ const { copy, copied } = useCopy(shareText)
 			<span v-if="categories">
 				<Icon :name="getCategoryIcon(categories[0])" />
 				{{ categories[0] }}
+			</span>
+
+			<span v-if="tags.length" v-tip="tags.join('、')">
+				<Icon name="tabler:tag" />
+				{{ tags.slice(0, 3).join(' / ') }}<template v-if="tags.length > 3"> +{{ tags.length - 3 }}</template>
+			</span>
+
+			<span v-if="commentCount !== null" v-tip="`共 ${commentCount} 条评论`">
+				<Icon name="tabler:message-dots" />
+				{{ commentCount }} 条评论
 			</span>
 
 			<span>

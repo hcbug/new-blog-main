@@ -1,4 +1,5 @@
-import { getRequestIP } from 'h3'
+import type { H3Event } from 'h3'
+import { getRequestHeaders, getRequestIP } from 'h3'
 import blogConfig from '~~/blog.config'
 
 /**
@@ -6,6 +7,11 @@ import blogConfig from '~~/blog.config'
  * - 按 IP 缓存 30 分钟，避免访客一多把免费接口打爆
  * - api.ip.sb 失败时回退 ipapi.co，再失败用兜底文案
  * - 响应因人而异，不允许 CDN 缓存（no-store），防止 A 访客的文案被缓存给 B 看
+ *
+ * IP 提取（关键）：
+ * 站点链路是 访客 → Cloudflare → Vercel，此时 x-forwarded-for 里是 Cloudflare
+ * 边缘节点 IP（阿姆斯特丹），会把访客误判成 Netherlands。
+ * 因此优先读取 CDN 提供的真实客户端 IP 头，再回退到 x-forwarded-for 链。
  */
 
 const GEO_TTL = 30 * 60 * 1000
@@ -25,6 +31,55 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>()
+
+function isPrivateIp(ip: string): boolean {
+	return !ip
+		|| /^(?:10\.|127\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.|169\.254\.)/.test(ip)
+		|| ip === '::1'
+		|| ip.startsWith('fc')
+		|| ip.startsWith('fd')
+		|| ip.startsWith('fe80')
+}
+
+/** CDN / 反代节点的 IP 段：出现在 x-forwarded-for 里时要跳过（否则会被误判为 CDN 所在地） */
+function isCdnIp(ip: string): boolean {
+	return /^(?:104\.(?:1[6-9]|2\d|3[01])\.|172\.6[4-9]\.|172\.7[01]\.|162\.158\.|188\.114\.|190\.93\.|197\.234\.|198\.41\.|76\.76\.21\.)/.test(ip)
+		|| ip.startsWith('2606:4700')
+}
+
+/** 解析真实客户端 IP：按 CDN 头优先级提取，跳过私有地址与 CDN 节点 */
+function resolveClientIp(event: H3Event): { ip: string, source: string } {
+	const headers = getRequestHeaders(event)
+
+	// 1. Cloudflare 真实客户端 IP
+	const cf = headers['cf-connecting-ip']?.trim()
+	if (cf && !isPrivateIp(cf))
+		return { ip: cf, source: 'cf-connecting-ip' }
+
+	// 2. 其他 CDN / 反向代理常见的真实 IP 头
+	for (const name of ['true-client-ip', 'x-real-ip', 'x-client-ip'] as const) {
+		const value = headers[name]?.trim()
+		if (value && !isPrivateIp(value))
+			return { ip: value, source: name }
+	}
+
+	// 3. x-forwarded-for 链：取第一个非私有且非 CDN 的地址
+	const forwarded = headers['x-forwarded-for']
+	if (forwarded) {
+		for (const raw of forwarded.split(',')) {
+			const ip = raw.trim()
+			if (ip && !isPrivateIp(ip) && !isCdnIp(ip))
+				return { ip, source: 'x-forwarded-for' }
+		}
+	}
+
+	// 4. 兜底：直连 socket 地址
+	const socketIp = getRequestIP(event, { xForwardedFor: false }) || ''
+	if (!isPrivateIp(socketIp))
+		return { ip: socketIp, source: 'socket' }
+
+	return { ip: '', source: 'none' }
+}
 
 function readCache(key: string) {
 	const hit = cache.get(key)
@@ -285,14 +340,16 @@ function compose(geo: Geo | null): string {
 }
 
 export default defineEventHandler(async (event) => {
-	const ip = getRequestIP(event, { xForwardedFor: true }) || ''
+	const { ip, source } = resolveClientIp(event)
+	const debug = getQuery(event).debug === '1'
+
 	// 私网/环回地址直接兜底，不浪费第三方接口额度
-	const isPrivate = !ip || /^(?:10\.|127\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(ip) || ip === '::1' || ip.startsWith('fc') || ip.startsWith('fd')
+	const isPrivate = isPrivateIp(ip)
 
 	const key = ip || 'anon'
 	const hit = readCache(key)
 	if (hit)
-		return { text: hit }
+		return debug ? { text: hit, debug: { ip, source } } : { text: hit }
 
 	const geo = isPrivate
 		? null
@@ -301,5 +358,5 @@ export default defineEventHandler(async (event) => {
 	writeCache(key, text)
 
 	setHeader(event, 'Cache-Control', 'no-store')
-	return { text }
+	return debug ? { text, debug: { ip, source } } : { text }
 })

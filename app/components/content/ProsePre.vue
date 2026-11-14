@@ -205,7 +205,7 @@ pre {
 	--start-offset: 4em;
 
 	padding: 1rem;
-	padding-inline-start: var(--start-offset);
+	padding-inline-start: 0.5rem;
 
 	&.wrap {
 		white-space: pre-wrap;
@@ -263,17 +263,15 @@ pre {
 		}
 	}
 
-	// 行指示器
+	// 行号：作为行内列随代码一起滚动，不再用 fixed 覆盖层遮挡横向滚动后的代码开头
 	&::before {
 		content: var(--line-indicator, "") attr(data-line);
-		position: fixed;
-		inset-inline-start: 0;
-		width: var(--start-offset);
-		padding-inline-end: 1em;
-		background-color: var(--c-bg-2);
+		display: inline-block;
+		width: calc(var(--start-offset) - 1em);
+		margin-inline-end: 1em;
 		text-align: end;
 		color: var(--line-indicator-color, var(--c-text-3));
-		z-index: 1;
+		user-select: none;
 	}
 
 	> .highlighted-word {

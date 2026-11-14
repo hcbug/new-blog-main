@@ -123,7 +123,18 @@ nano compose.yml
 
 将其中的 `image: soulter/astrbot:latest` 替换为 `image: m.daocloud.io/docker.io/soulter/astrbot:latest`.
 
-[nano 怎么用？](https://blog.hcbu.cn/2026/easyimage/#配置-nginx)
+::folding
+#title
+nano 编辑器怎么用？
+#default
+nano 是一个文本编辑器，用于编辑配置文件。它的使用方法如下：
+
+1. 打开文件：在终端中输入 `nano 文件名`，例如 `sudo nano /etc/nginx/sites-available/img.hcbu.cn`。
+2. 编辑文件：使用方向键移动光标，用键盘输入修改内容。
+3. 保存文件：按下 :key{code="O" ctrl} （屏幕底部会提示 `File Name to Write` ），直接按 :key{code="Enter"} 确认覆盖。
+4. 退出编辑器：按下 :key{code="X" ctrl} （如果未保存，会提示是否保存，按 :key{code="Y"} 确认，再按 :key{code="Enter"}）。
+5. 特别提醒： `^` 代表键盘上的 :key{code="Control"} 键。
+::
 
 ### 运行 Compose
 
