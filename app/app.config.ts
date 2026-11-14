@@ -70,7 +70,6 @@ export default defineAppConfig({
 				items: [
 					{ icon: 'tabler:rss', text: 'Atom订阅', url: '/atom.xml' },
 					{ icon: 'ri:subway-line', text: '开往', url: 'https://www.travellings.cn/go.html' },
-					{ icon: 'tabler:home', text: '自建图床', url: 'https://img.hcbu.cn' },
 					{ icon: 'tabler:heart', text: '沭中我爱你', url: 'https://sz.hcbu.cn' },
 				],
 			},
@@ -78,7 +77,6 @@ export default defineAppConfig({
 				title: '社交',
 				items: [
 					{ icon: 'tabler:brand-github', text: 'hcbug', url: 'https://github.com/hcbug' },
-					{ icon: 'tabler:brand-x', text: 'hcbugx', url: 'https://x.com/hcbugx' },
 					{ icon: 'tabler:brand-telegram', text: 'hcbug', url: 'https://t.me/hcbug' },
 					{ icon: 'tabler:mail', text: blogConfig.author.email, url: `mailto:${blogConfig.author.email}` },
 				],
@@ -87,7 +85,6 @@ export default defineAppConfig({
 				title: '信息',
 				items: [
 					{ icon: 'simple-icons:nuxt', text: `主题: ${pascalCase(name)} ${version}`, url: 'https://github.com/L33Z22L11/blog-v3' },
-					{ icon: 'tabler:color-swatch', text: '主题和组件文档', url: 'https://blog.zhilu.site/theme' },
 					{ icon: 'tabler:certificate', text: '苏ICP备2025192657号-2', url: 'https://beian.miit.gov.cn/' },
 					{ icon: 'tabler:shield-check', text: '苏公网安备32132202001557号', url: 'https://beian.mps.gov.cn/#/query/webSearch?code=32132202001557' },
 				],

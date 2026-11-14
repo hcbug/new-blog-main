@@ -411,7 +411,7 @@ export default [
 			},
 			{
 				author: 'LineXic',
-				desc: '念念不忘，必有回响',
+				desc: '具体问题，具体分析。',
 				link: 'https://www.linexic.top/',
 				feed: 'https://www.linexic.top/rss.xml',
 				icon: 'https://www.linexic.top/logo.png',
