@@ -241,7 +241,7 @@ onMounted(() => {
 				
 				&:hover {
 					z-index: 100; 
-					transform: scale(2) !important;
+					transform: scale(1.5) !important;
 					background-color: #fff !important;
 					box-shadow: 0 4px 16px rgba(0,0,0,0.15);
 					
