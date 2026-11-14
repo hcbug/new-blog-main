@@ -14,15 +14,36 @@ const { tocOffsets, activeHeadingId } = useToc(toc, computed(() => scrollableEl.
 function hasHeading(tocTree: TocLink, heading?: string): boolean {
 	return tocTree.id === heading || !!tocTree.children?.some(child => hasHeading(child, heading))
 }
+
+/** 阅读进度百分比：高频更新只改 DOM 文本 */
+const percentEl = useTemplateRef<HTMLSpanElement>('percent')
+function updateReadPercent() {
+	const main = document.querySelector('#main-content')
+	if (!main || !percentEl.value)
+		return
+	const total = main.scrollHeight - window.innerHeight
+	const percent = total > 0 ? Math.min(100, Math.max(0, Math.round(window.scrollY / total * 100))) : 0
+	percentEl.value.textContent = `${percent}%`
+}
+
+onMounted(() => {
+	updateReadPercent()
+	useEventListener(window, 'scroll', updateReadPercent, { passive: true })
+	useEventListener(window, 'resize', updateReadPercent, { passive: true })
+})
 </script>
 
 <template>
 <BlogWidget
 	ref="toc"
-	title="文章目录"
 	shrink
 	:style="{ minHeight: `clamp(4rem, ${tocOffsets.length}rem, 20rem)` }"
 >
+	<template #title>
+		<Icon name="tabler:list-details" />
+		文章目录
+		<span ref="percent" class="read-percent">0%</span>
+	</template>
 	<template #action>
 		<!-- use <a> for anchor -->
 		<a href="#main-content" aria-label="返回开头">
@@ -64,6 +85,13 @@ function hasHeading(tocTree: TocLink, heading?: string): boolean {
 </template>
 
 <style lang="scss" scoped>
+.read-percent {
+	margin-inline-start: auto;
+	font-size: 0.8em;
+	font-variant-numeric: tabular-nums;
+	color: var(--c-primary);
+}
+
 .toc {
 	position: relative;
 

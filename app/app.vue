@@ -11,7 +11,10 @@
 	<BlogAside />
 </div>
 <BlogPanel />
+<BlogMusicPlayer />
+<BlogBackToTop />
 <BikariyaModals />
+<BlogToast />
 </template>
 
 <!-- eslint-disable-next-line vue/enforce-style-attribute -->

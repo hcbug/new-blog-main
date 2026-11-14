@@ -1,3 +1,5 @@
+import { getDomain, getMainDomain } from './link'
+
 /** 友链架构图标映射 */
 // @keep-sorted
 const archIcons = {
@@ -27,9 +29,9 @@ const archIcons = {
 	'NotionNext': 'simple-icons:notion',
 	'Nuxt': 'simple-icons:nuxt',
 	'PHP': 'simple-icons:php',
-	'Rust': 'tabler:brand-rust',
 	'Python': 'simple-icons:python',
 	'React': 'simple-icons:react',
+	'Rust': 'tabler:brand-rust',
 	'Typecho': 'icon-park-solid:align-text-left-one', // 不准确
 	'Valaxy': 'tabler:letter-v', // 不准确
 	'Vercel': 'simple-icons:vercel',

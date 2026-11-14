@@ -33,7 +33,9 @@ layoutStore.setAside(['blog-log'])
 	<BlogAside />
 </div>
 <BlogPanel />
+<BlogBackToTop />
 <BikariyaModals />
+<BlogToast />
 </template>
 
 <style lang="scss" scoped>

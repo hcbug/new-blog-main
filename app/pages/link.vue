@@ -57,6 +57,8 @@ const copyFields = {
 	</template>
 </Tab>
 
+<LinkFriendApply />
+
 <PostComment />
 </template>
 

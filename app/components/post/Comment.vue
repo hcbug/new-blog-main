@@ -57,7 +57,79 @@ onMounted(() => {
 		el: '#twikoo',
 		katex: window.katex,
 	})
+	if (commentEl.value)
+		setupEmojiZoom(commentEl.value)
 })
+
+/**
+ * 评论表情悬停放大：事件委托在评论区容器上，twikoo 重建 DOM 也无需重新绑定。
+ * 手机端长按表情不弹系统菜单，避免误触。
+ */
+function setupEmojiZoom(root: HTMLElement) {
+	const preview = document.createElement('div')
+	preview.id = 'owo-zoom'
+	preview.setAttribute('aria-hidden', 'true')
+	document.body.appendChild(preview)
+
+	let timer: ReturnType<typeof setTimeout> | null = null
+	let lastSrc = ''
+
+	const hide = () => {
+		if (timer)
+			clearTimeout(timer)
+		timer = null
+		preview.style.display = 'none'
+		preview.innerHTML = ''
+		lastSrc = ''
+	}
+
+	const show = (target: HTMLImageElement) => {
+		hide()
+		lastSrc = target.currentSrc || target.src
+		timer = setTimeout(() => {
+			const rect = target.getBoundingClientRect()
+			const height = rect.height * 3
+			const width = rect.width * 3
+			let left = rect.left - (width - rect.width) / 2
+			let top = rect.top
+			if (left + width > window.innerWidth)
+				left = window.innerWidth - width - 8
+			if (left < 8)
+				left = 8
+			// 上方放不下就翻到图片下方
+			if (top - height < 0)
+				top = rect.bottom + 4
+			preview.style.cssText = `display:flex;height:${height}px;width:${width}px;left:${left}px;top:${top}px`
+			preview.innerHTML = `<img src="${lastSrc}" alt="">`
+			timer = null
+		}, 300)
+	}
+
+	root.addEventListener('mouseover', (e) => {
+		const target = e.target
+		if (!(target instanceof HTMLImageElement))
+			return
+		const src = target.currentSrc || target.src
+		if (!src || src === lastSrc)
+			return
+		show(target)
+	})
+
+	root.addEventListener('mouseout', (e) => {
+		const target = e.target
+		if (!(target instanceof HTMLImageElement))
+			return
+		const related = e.relatedTarget
+		if (related instanceof Node && target.contains(related))
+			return
+		hide()
+	})
+
+	root.addEventListener('contextmenu', (e) => {
+		if (window.innerWidth <= 768)
+			e.preventDefault()
+	})
+}
 </script>
 
 <template>
@@ -186,13 +258,13 @@ onMounted(() => {
 	}
 	.OwO {
 		.OwO-body {
-			background-color: #E4E5E6 !important; 
-			border: 1px solid rgba(0, 0, 0, 0.1) !important; 
-			border-radius: 8px !important; 
+			background-color: #E4E5E6 !important;
+			border: 1px solid rgba(0, 0, 0, 0.1) !important;
+			border-radius: 8px !important;
 			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
 			padding: 0 !important;
-			overflow: hidden !important; 
-			
+			overflow: hidden !important;
+
 			html.dark & {
 				background-color: #121314 !important;
 				border-color: rgba(255, 255, 255, 0.08) !important;
@@ -204,7 +276,7 @@ onMounted(() => {
 				max-height: 320px !important;
 				overflow-y: auto !important;
 				color: #333 !important;
-				
+
 				html.dark & {
 					color: #d1d1d1 !important;
 				}
@@ -216,72 +288,72 @@ onMounted(() => {
 
 			.OwO-item {
 				position: relative;
-				min-width: 44px !important;  
-				min-height: 44px !important; 
-				padding: 4px !important; 
-				margin: 4px !important; 
-				display: inline-flex !important; 
+				min-width: 44px !important;
+				min-height: 44px !important;
+				padding: 4px !important;
+				margin: 4px !important;
+				display: inline-flex !important;
 				justify-content: center;
 				align-items: center;
 				box-sizing: border-box;
 				border-radius: 6px;
 				white-space: nowrap !important;
 				font-size: 16px;
-				
+
 				transition: transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28), background-color 0.2s !important;
 				transform-origin: center center;
-				
+
 				img {
 					width: 32px !important;
 					height: 32px !important;
-					max-width: 32px !important;  
-					max-height: 32px !important; 
-					object-fit: contain !important; 
+					max-width: 32px !important;
+					max-height: 32px !important;
+					object-fit: contain !important;
 				}
-				
+
 				&:hover {
-					z-index: 100; 
+					z-index: 100;
 					transform: scale(1.5) !important;
 					background-color: #fff !important;
 					box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-					
+
 					html.dark & {
 						background-color: #1a1b1e !important;
 						box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.1);
 					}
 				}
 			}
-			
+
 			.OwO-bar {
 				display: flex !important;
 				flex-wrap: wrap !important;
-				gap: 6px !important; 
+				gap: 6px !important;
 				padding: 10px !important;
-				background-color: rgba(0, 0, 0, 0.05) !important; 
+				background-color: rgba(0, 0, 0, 0.05) !important;
 				border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
-				border-radius: 0 0 8px 8px !important; 
-				
+				border-radius: 0 0 8px 8px !important;
+
 				html.dark & {
-					background-color: #161618 !important; 
+					background-color: #161618 !important;
 					border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
 				}
-				
+
 				span {
 					margin: 0 !important;
 					padding: 4px 10px !important;
-					color: #666 !important; 
+					color: #666 !important;
 					font-size: 13px;
 					border-radius: 6px;
 					cursor: pointer;
 					transition: all 0.2s;
-					
+
 					&:hover {
 						color: #111 !important;
 						background-color: rgba(0, 0, 0, 0.08) !important;
 					}
 					&.OwO-item-active {
-						color: #111 !important; 
-						background-color: rgba(0, 0, 0, 0.12) !important; 
+						color: #111 !important;
+						background-color: rgba(0, 0, 0, 0.12) !important;
 						font-weight: 500;
 					}
 
@@ -301,14 +373,14 @@ onMounted(() => {
 				width: 40px !important;
 				height: 40px !important;
 				margin: 2px !important;
-				
+
 				img {
 					width: 30px !important;
 					height: 30px !important;
 				}
 
 				&:hover img {
-					transform: scale(1); 
+					transform: scale(1);
 					padding: 0;
 					background-color: transparent;
 					box-shadow: none;
@@ -331,14 +403,14 @@ onMounted(() => {
 				width: 40px !important;
 				height: 40px !important;
 				margin: 2px !important;
-				
+
 				img {
 					width: 30px !important;
 					height: 30px !important;
 				}
 			}
 			.OwO-item:hover {
-				background-color: transparent !important; 
+				background-color: transparent !important;
 			}
 		}
 	}
@@ -349,13 +421,13 @@ onMounted(() => {
 				width: 40px !important;
 				height: 40px !important;
 				margin: 2px !important;
-				
+
 				img {
 					width: 30px !important;
 					height: 30px !important;
 				}
 			}
-			
+
 			.OwO-item:hover {
 				background-color: transparent;
 			}
@@ -445,6 +517,29 @@ onMounted(() => {
 		border-radius: 4px;
 		background-color: var(--c-bg-2);
 		font-size: 0.9em;
+	}
+}
+</style>
+
+<style lang="scss" scoped>
+/* 评论表情放大预览（由 JS 创建在 body 上，通过 :global 应用全局样式） */
+:global(#owo-zoom) {
+	position: fixed;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	padding: 0.3em;
+	border-radius: 0.5em;
+	background-color: var(--ld-bg-blur);
+	backdrop-filter: blur(0.3rem);
+	box-shadow: var(--box-shadow-2), var(--box-shadow-3);
+	pointer-events: none;
+	z-index: 1000;
+
+	img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
 	}
 }
 </style>

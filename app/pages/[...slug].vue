@@ -2,7 +2,7 @@
 const route = useRoute()
 
 const layoutStore = useLayoutStore()
-layoutStore.setAside(['toc'])
+layoutStore.setAside(['toc', 'blog-greeting'])
 
 const { data: post } = await useAsyncData(
 	`content:${route.path}`,
@@ -35,6 +35,7 @@ if (import.meta.dev) {
 </script>
 
 <template>
+<BlogReadingProgress />
 <template v-if="post">
 	<PostHeader v-bind="post" />
 	<PostExcerpt v-if="excerpt" :excerpt />

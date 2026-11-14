@@ -164,6 +164,7 @@ useEventListener(carouselEl, 'wheel', (e) => {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+		transition: transform 0.6s ease;
 	}
 
 	>.stable-info, > .hover-info {
@@ -209,6 +210,17 @@ useEventListener(carouselEl, 'wheel', (e) => {
 
 		> .hover-info {
 			opacity: 1;
+		}
+
+		// 悬停轻微推近封面，与毛玻璃信息层配合更有纵深
+		> .cover {
+			transform: scale(1.06);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		> .cover {
+			transition: none;
 		}
 	}
 }

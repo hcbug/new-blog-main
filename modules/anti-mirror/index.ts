@@ -15,16 +15,16 @@ export default defineNuxtModule({
 	meta: {
 		name: 'anti-mirror',
 	},
-	setup(options, nuxt) {
-		(nuxt.options.app.head.script ??= []).push({
-			innerHTML: toIifeString(handleMirror, blacklist.map(btoa), btoa(blogConfig.url)),
-		})
+	async setup(options, nuxt) {
+		const innerHTML = await toIifeString(handleMirror, blacklist.map(btoa), btoa(blogConfig.url))
+		;(nuxt.options.app.head.script ??= []).push({ innerHTML })
 	},
 })
 
-function toIifeString<T extends unknown[]>(fn: (...args: T) => void, ...args: T) {
+async function toIifeString<T extends unknown[]>(fn: (...args: T) => void, ...args: T) {
 	const fnString = fn.toString()
 	const argsString = JSON.stringify(args).slice(1, -1)
-	const minified = minify('', `(${fnString})(${argsString})`)
+	// oxc-minify 新版返回 Promise<MinifyResult>
+	const minified = await minify('', `(${fnString})(${argsString})`)
 	return minified.code
 }

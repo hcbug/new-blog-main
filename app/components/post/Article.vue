@@ -3,10 +3,20 @@ import type { ArticleProps } from '~/types/article'
 
 const props = defineProps<{ useUpdated?: boolean } & ArticleProps>()
 const showAllDate = isTimeDiffSignificant(props.date, props.updated)
+
+/** 卡片光晕跟随鼠标：直接写 CSS 变量，不进响应式；触摸设备不启用 */
+function onPointerMove(e: PointerEvent) {
+	const el = e.currentTarget as HTMLElement
+	if (!matchMedia('(hover: hover)').matches)
+		return
+	const rect = el.getBoundingClientRect()
+	el.style.setProperty('--mx', `${e.clientX - rect.left}px`)
+	el.style.setProperty('--my', `${e.clientY - rect.top}px`)
+}
 </script>
 
 <template>
-<UtilLink class="article-card card upraise">
+<UtilLink class="article-card card upraise" @pointermove="onPointerMove">
 	<NuxtImg v-if="image" class="article-cover" :src="image" :alt="title" />
 	<article>
 		<h2 class="article-title text-creative">
@@ -53,6 +63,25 @@ const showAllDate = isTimeDiffSignificant(props.date, props.updated)
 	border-radius: 0.8em;
 	color: var(--c-text);
 	animation: float-in 0.2s var(--delay) backwards;
+
+	// 鼠标跟随光晕，压在卡片底色之上、内容之下
+	&::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		background: radial-gradient(16rem circle at var(--mx, 50%) var(--my, 50%), var(--c-primary-soft), transparent 65%);
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.25s;
+		z-index: -1;
+	}
+
+	@media (hover: hover) {
+		&:hover::after {
+			opacity: 1;
+		}
+	}
 
 	> article {
 		display: grid;

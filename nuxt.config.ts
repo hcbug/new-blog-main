@@ -78,6 +78,12 @@ export default defineNuxtConfig({
 			// https://github.com/nuxt/content/issues/2378
 			autoSubfolderIndex: CLOUDFLARE_PAGES || GITHUB_ACTIONS || NETLIFY ? false : undefined,
 		},
+		vercel: {
+			functions: {
+				// 朋友圈首次抓取友链订阅源较慢，放宽 Serverless 函数时长上限
+				maxDuration: 60,
+			},
+		},
 	},
 
 	// @keep-sorted

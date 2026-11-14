@@ -14,6 +14,7 @@ export interface ArticleSchema {
 	date?: string
 	updated?: string
 	published?: string
+	author?: string
 	categories?: string[]
 	tags?: string[]
 	type?: ArticleType
@@ -34,6 +35,7 @@ const articleSchema = z.object({
 	date: z.string().optional(),
 	updated: z.string().optional(),
 	published: z.string().optional(),
+	author: z.string().optional(),
 	categories: z.array(z.string()).default([blogConfig.defaultCategory]),
 	tags: z.array(z.string()).default([]),
 	type: z.enum(articleTypes).optional().default(articleTypes[0]),

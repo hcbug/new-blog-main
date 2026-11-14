@@ -71,6 +71,16 @@ const blogConfig = {
 		enableStyle: true,
 	},
 
+	/** 音乐播放器（全局悬浮胶囊） */
+	music: {
+		/** Meting API 基础地址，歌单/歌词均通过 JSONP 获取，不受 CORS 限制 */
+		apiBase: 'https://api.injahow.cn/meting/',
+		/** 网易云歌单 ID，换成自己的歌单只需改这里 */
+		playlistId: '8578694173',
+		/** 初始音量 0~1 */
+		defaultVolume: 0.6,
+	},
+
 	/** 向 <head> 中添加脚本 */
 	scripts: [
 		{ src: 'https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js', defer: true },
@@ -83,6 +93,14 @@ const blogConfig = {
 	twikoo: {
 		envId: 'https://twikoo.hcbu.cn/',
 		preload: 'https://twikoo.hcbu.cn/',
+	},
+
+	/** 公告栏：按访客 IP 归属地生成问候语 */
+	visitor: {
+		/** 博主所在地，用于计算“你距离博主 X 公里” */
+		home: { name: '宿迁', lng: 118.2755, lat: 33.9631 },
+		/** IP 归属地获取失败时的兜底文案 */
+		fallback: '欢迎光临洪畅的博客！想，全是问题；做，才有答案。',
 	},
 }
 
