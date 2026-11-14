@@ -36,13 +36,13 @@ onMounted(fetchGreeting)
 		公告
 	</template>
 
-	<p class="announcement-text">
-		{{ announcement }}
-	</p>
-
 	<p v-if="appConfig.visitor.showGreeting" class="greeting-text">
 		<Icon name="tabler:map-pin" />
 		{{ greeting }}
+	</p>
+
+	<p class="announcement-text">
+		{{ announcement }}
 	</p>
 
 	<UtilHydrateSafe>
@@ -55,17 +55,10 @@ onMounted(fetchGreeting)
 </template>
 
 <style lang="scss" scoped>
-.announcement-text {
-	padding: 0.2em 0;
-	line-height: 1.6;
-	white-space: pre-line;
-}
-
 .greeting-text {
 	display: flex;
 	gap: 0.35em;
 	align-items: baseline;
-	margin-top: 0.3em;
 	padding: 0.3em 0.5em;
 	border-radius: 0.5em;
 	background-color: var(--c-bg-soft);
@@ -78,6 +71,12 @@ onMounted(fetchGreeting)
 		transform: translateY(0.1em);
 		color: var(--c-primary);
 	}
+}
+
+.announcement-text {
+	padding: 0.3em 0 0.2em;
+	line-height: 1.6;
+	white-space: pre-line;
 }
 
 .greeting-refresh {

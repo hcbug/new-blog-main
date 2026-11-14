@@ -4,19 +4,30 @@ import type { ArticleProps } from '~/types/article'
 const props = defineProps<{ useUpdated?: boolean } & ArticleProps>()
 const showAllDate = isTimeDiffSignificant(props.date, props.updated)
 
-/** 卡片光晕跟随鼠标：直接写 CSS 变量，不进响应式；触摸设备不启用 */
+/** 卡片光晕与 3D 内倾：直接写 CSS 变量，不进响应式；触摸设备不启用 */
 function onPointerMove(e: PointerEvent) {
 	const el = e.currentTarget as HTMLElement
 	if (!matchMedia('(hover: hover)').matches)
 		return
 	const rect = el.getBoundingClientRect()
+	const x = (e.clientX - rect.left) / rect.width
+	const y = (e.clientY - rect.top) / rect.height
 	el.style.setProperty('--mx', `${e.clientX - rect.left}px`)
 	el.style.setProperty('--my', `${e.clientY - rect.top}px`)
+	// 鼠标所在位置向内凹陷：绕 X 轴最多 5deg，绕 Y 轴最多 7deg
+	el.style.setProperty('--tilt-x', `${(0.5 - y) * 5}deg`)
+	el.style.setProperty('--tilt-y', `${(x - 0.5) * 7}deg`)
+}
+
+function onPointerLeave(e: PointerEvent) {
+	const el = e.currentTarget as HTMLElement
+	el.style.setProperty('--tilt-x', '0deg')
+	el.style.setProperty('--tilt-y', '0deg')
 }
 </script>
 
 <template>
-<UtilLink class="article-card card upraise" @pointermove="onPointerMove">
+<UtilLink class="article-card card upraise" @pointermove="onPointerMove" @pointerleave="onPointerLeave">
 	<NuxtImg v-if="image" class="article-cover" :src="image" :alt="title" />
 	<article>
 		<h2 class="article-title text-creative">
@@ -87,6 +98,28 @@ function onPointerMove(e: PointerEvent) {
 		display: grid;
 		gap: 0.5em;
 		padding: 1em;
+	}
+}
+
+/* 3D 内倾：悬停处向内凹陷，移开平滑回正（覆盖 .card.upraise 的位移） */
+@media (hover: hover) {
+	.article-card.card.upraise:hover {
+		box-shadow: var(--box-shadow-3);
+		transform: perspective(700px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(-2px);
+		transition: box-shadow 0.2s, transform 0.12s linear;
+	}
+
+	.article-card.card.upraise:not(:hover) {
+		transform: perspective(700px) rotateX(0deg) rotateY(0deg);
+		transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.4, 1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.article-card.card.upraise:hover,
+	.article-card.card.upraise:not(:hover) {
+		transform: none;
+		transition: none;
 	}
 }
 

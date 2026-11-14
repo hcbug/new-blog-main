@@ -4,7 +4,12 @@
  * 其他页面退回整个 #main-content。
  */
 export function getArticleScrollProgress(): number {
-	const article = document.querySelector<HTMLElement>('.article')
+	// 页面已无法继续往下滚动时视为 100%（文章偏短或结尾被视口吞没的场景）
+	const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+	if (maxScroll <= 0 || window.scrollY >= maxScroll - 2)
+		return 1
+
+	const article = document.querySelector<HTMLElement>('.article:not(.speak-body)')
 	const fallback = document.querySelector<HTMLElement>('#main-content')
 	const target = article && article.offsetHeight > 0 ? article : fallback
 	if (!target)

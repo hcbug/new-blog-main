@@ -69,6 +69,7 @@ export default defineAppConfig({
 				title: '探索',
 				items: [
 					{ icon: 'tabler:rss', text: 'Atom订阅', url: '/atom.xml' },
+					{ icon: 'tabler:message-2', text: '碎碎念', url: '/speaks' },
 					{ icon: 'tabler:planet', text: '朋友圈', url: '/fcircle' },
 					{ icon: 'ri:subway-line', text: '开往', url: 'https://www.travellings.cn/go.html' },
 					{ icon: 'tabler:heart', text: '沭中我爱你', url: 'https://sz.hcbu.cn' },
@@ -116,6 +117,7 @@ export default defineAppConfig({
 			title: '',
 			items: [
 				{ icon: 'tabler:files', text: '文章', url: '/' },
+				{ icon: 'tabler:message-2', text: '碎碎念', url: '/speaks' },
 				{ icon: 'tabler:tags', text: '标签', url: '/tags' },
 				{ icon: 'tabler:folder', text: '分类', url: '/categories' },
 				{ icon: 'tabler:planet', text: '朋友圈', url: '/fcircle' },

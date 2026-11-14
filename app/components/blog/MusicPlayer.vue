@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
  * 全局音乐播放器（悬浮胶囊）。
- * - 数据走 Meting API（JSONP），歌词优先走站内代理 /api/lyric（网易云官方接口）
+ * - 数据统一走站内代理 /api/meting（服务端转发，无 CORS/JSONP 问题）
+ * - 歌词优先走站内代理 /api/lyric（网易云官方接口）
  * - 逐字歌词：有 YRC 用官方逐字时间轴；没有时按行时长 + 字符权重合成节奏
  * - 播放进度 / 时间标签 / 逐字高亮这类高频更新只改 DOM，不进 Vue 响应式
  * - 进度条支持拖动（预览 + 松手落点）与键盘微调
@@ -60,10 +61,11 @@ const curTimeEl = useTemplateRef<HTMLSpanElement>('cur-time')
 const durEl = useTemplateRef<HTMLSpanElement>('dur')
 const lyricsEl = useTemplateRef<HTMLDivElement>('lyrics')
 
-const resolvedUrls = new Map<string, string>()
 let currentSec = 0
 let pendingSeek = 0
 let lrcFetchSeq = 0
+// 音频出错兜底时是否恢复播放（selectSong 的 autoplay 意图）
+let keepPlaying = false
 // 逐字高亮与拖动的非响应式状态（直接操作 DOM）
 let prevLineIdx = -1
 let prevWordIdx = -1
@@ -71,44 +73,6 @@ let dragging = false
 let dragRatio = 0
 
 const currentSong = computed(() => songs.value[currentIdx.value])
-
-/** JSONP 请求：Meting API 未必开 CORS，用 script 标签绕开 */
-function jsonp<T>(url: string, timeout = 8000): Promise<T> {
-	return new Promise((resolve, reject) => {
-		const callback = `__music_cb_${Date.now()}_${Math.random().toString(36).slice(2)}`
-		const script = document.createElement('script')
-		let done = false
-		let timer: ReturnType<typeof setTimeout> | undefined
-
-		const cleanup = () => {
-			done = true
-			clearTimeout(timer)
-			delete (window as any)[callback]
-			script.remove()
-		}
-		timer = setTimeout(() => {
-			if (done)
-				return
-			cleanup()
-			reject(new Error('请求超时'))
-		}, timeout)
-
-		;(window as any)[callback] = (data: T) => {
-			if (done)
-				return
-			cleanup()
-			resolve(data)
-		}
-		script.onerror = () => {
-			if (done)
-				return
-			cleanup()
-			reject(new Error('网络错误'))
-		}
-		script.src = `${url}${url.includes('?') ? '&' : '?'}callback=${callback}`
-		document.head.appendChild(script)
-	})
-}
 
 function extractId(song: any): string {
 	if (song?.id)
@@ -147,9 +111,11 @@ async function loadPlaylist() {
 			songs.value = cached
 		}
 		else {
-			const url = `${music.apiBase}?server=netease&type=playlist&id=${music.playlistId}&limit=${music.playlistLimit ?? 300}`
-			// 大歌单响应较慢，放宽超时
-			const raw: any[] = await jsonp(url, 20_000)
+			// 歌单走站内代理，绕开 CORS / JSONP 限制
+			const raw: unknown = await $fetch('/api/meting', {
+				params: { type: 'playlist', id: music.playlistId, limit: music.playlistLimit ?? 300 },
+				timeout: 20_000,
+			})
 			const list = (Array.isArray(raw) ? raw : [])
 				.map(item => ({
 					id: extractId(item),
@@ -207,22 +173,13 @@ function persistProgress() {
 	catch {}
 }
 
-/** 解析音频直链：Meting url 接口 → 网易云官方外链兜底 */
-async function resolveUrl(song: Song): Promise<string> {
-	const hit = resolvedUrls.get(song.id)
-	if (hit)
-		return hit
-	try {
-		const res = await jsonp<{ url?: string }>(`${music.apiBase}?server=netease&type=url&id=${song.id}`, 5000)
-		if (res?.url && /^https?:\/\//i.test(res.url)) {
-			resolvedUrls.set(song.id, res.url)
-			return res.url
-		}
-	}
-	catch {}
-	const fallback = `https://music.163.com/song/media/outer/url?id=${song.id}.mp3`
-	resolvedUrls.set(song.id, fallback)
-	return fallback
+/**
+ * 音频直链：直接使用 Meting url 端点（服务端 302 到真实 mp3，
+ * audio 标签会跟随重定向，无需 CORS/JSONP）。播放失败时由 onAudioError
+ * 兜底为网易云官方外链。
+ */
+function resolveUrl(song: Song): string {
+	return `${music.apiBase}?server=netease&type=url&id=${song.id}`
 }
 
 // ---------- 歌词 ----------
@@ -233,7 +190,7 @@ interface LyricPayload {
 	yrc?: string
 }
 
-/** 网易云官方歌词 → 站内代理 → meting JSONP 兜底 */
+/** 网易云官方歌词 → 站内代理 → Meting 歌词代理兜底 */
 async function fetchLyricPayload(song: Song): Promise<LyricPayload | null> {
 	try {
 		const res = await $fetch<LyricPayload>(`/api/lyric?id=${song.id}`, { timeout: 8000 })
@@ -242,8 +199,10 @@ async function fetchLyricPayload(song: Song): Promise<LyricPayload | null> {
 	}
 	catch {}
 	try {
-		const url = song.lrcUrl ?? `${music.apiBase}?server=netease&type=lrc&id=${song.id}`
-		return await jsonp<LyricPayload>(url)
+		return await $fetch<LyricPayload>('/api/meting', {
+			params: { type: 'lrc', id: song.id },
+			timeout: 8000,
+		})
 	}
 	catch {
 		return null
@@ -460,22 +419,26 @@ async function selectSong(song: Song, autoplay: boolean) {
 	if (!audio)
 		return
 	playing.value = false
+	keepPlaying = autoplay
 	loadLyrics(song)
-	try {
-		const url = await resolveUrl(song)
-		if (currentSong.value?.id !== song.id)
-			return
-		audio.src = url
-		audio.load()
-		if (autoplay) {
-			audio.volume = muted.value ? 0 : volume.value
-			audio.play().catch(() => {})
-		}
+	audio.src = resolveUrl(song)
+	audio.load()
+	if (autoplay) {
+		audio.volume = muted.value ? 0 : volume.value
+		audio.play().catch(() => {})
 	}
-	catch {
-		if (currentSong.value?.id === song.id)
-			playing.value = false
-	}
+}
+
+/** 音频加载失败：Meting 302 链失效时用网易云官方外链兜底重试一次 */
+function onAudioError() {
+	const audio = audioEl.value
+	const song = currentSong.value
+	if (!audio || !song || !audio.src.includes('/meting/'))
+		return
+	audio.src = `https://music.163.com/song/media/outer/url?id=${song.id}.mp3`
+	audio.load()
+	if (keepPlaying)
+		audio.play().catch(() => {})
 }
 
 function togglePlay() {
@@ -944,6 +907,7 @@ const modeTip = computed(() => ({
 		@timeupdate="onTimeUpdate"
 		@loadedmetadata="onLoadedMetadata"
 		@ended="onEnded"
+		@error="onAudioError"
 		@play="playing = true"
 		@pause="playing = false"
 	/>

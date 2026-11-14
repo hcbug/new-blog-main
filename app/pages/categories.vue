@@ -199,4 +199,9 @@ function selectCategory(name?: string) {
 		vertical-align: -0.15em;
 	}
 }
+
+/* 切换筛选/排序时，离场元素脱离文档流，避免列表跳动 */
+.float-in-leave-to {
+	position: absolute;
+}
 </style>

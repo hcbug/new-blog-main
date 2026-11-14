@@ -28,7 +28,8 @@
 }
 
 .float-in-move {
-	transition: transform var(--delay) !important;
+	// 排序/筛选切换时的重排动画：固定时长，不受元素入场 --delay 影响
+	transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .collapse-enter-active,

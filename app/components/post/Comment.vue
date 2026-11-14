@@ -218,6 +218,30 @@ function setupEmojiZoom(root: HTMLElement) {
 :deep(#twikoo) {
 	margin: 2em 0;
 
+	// 表情栏展开动画：display 切换会重置动画，每次展开都会播放
+	.OwO .OwO-body {
+		transform-origin: bottom left;
+		animation: owo-pop 0.22s ease;
+	}
+
+	@keyframes owo-pop {
+		from {
+			opacity: 0;
+			transform: translateY(6px) scale(0.96);
+		}
+
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.OwO .OwO-body {
+			animation: none;
+		}
+	}
+
 	.tk-admin-container {
 		position: fixed;
 		z-index: calc(var(--z-index-popover) + 1);
