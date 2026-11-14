@@ -62,6 +62,7 @@ const lineFillEl = useTemplateRef<HTMLDivElement>('line-fill')
 const ringEl = useTemplateRef<SVGCircleElement>('ring')
 const lyricsEl = useTemplateRef<HTMLDivElement>('lyrics')
 const stripLineEl = useTemplateRef<HTMLSpanElement>('strip-line')
+const stripTransEl = useTemplateRef<HTMLSpanElement>('strip-trans')
 
 let currentSec = 0
 let pendingSeek = 0
@@ -303,6 +304,8 @@ function updateStripScroll(wordIdx: number) {
 	if (lrcIndex.value !== prevStripLine) {
 		prevStripLine = lrcIndex.value
 		lineEl.style.transform = ''
+		if (stripTransEl.value)
+			stripTransEl.value.style.transform = ''
 		// 等新一行渲染完成后再测量位置
 		requestAnimationFrame(() => applyStripScroll(lineEl, wordIdx))
 		return
@@ -318,14 +321,39 @@ function applyStripScroll(lineEl: HTMLElement, wordIdx: number) {
 	const cur = lineEl.querySelectorAll<HTMLElement>('.strip-word')[wordIdx]
 	if (!box || !cur)
 		return
-	const overflow = lineEl.scrollWidth - box.clientWidth
+	const boxWidth = box.clientWidth
+	const overflow = lineEl.scrollWidth - boxWidth
+	// 允许少量“越界滚动”，让行尾的最后一个字也能停在左侧舒适的阅读位置
+	const overscroll = Math.min(boxWidth * 0.2, 40)
 	if (overflow <= 1) {
 		lineEl.style.transform = ''
+		applyStripTrans(box)
 		return
 	}
-	// 当前词保持在可视区左侧 45% 附近，随演唱推进平滑左移
-	const target = Math.max(0, Math.min(overflow, cur.offsetLeft + cur.offsetWidth / 2 - box.clientWidth * 0.45))
+	// 当前词保持在可视区左侧 32% 附近，随演唱推进平滑左移
+	const anchor = boxWidth * 0.32
+	const target = Math.max(0, Math.min(overflow + overscroll, cur.offsetLeft + cur.offsetWidth / 2 - anchor))
 	lineEl.style.transform = `translateX(${-target}px)`
+	applyStripTrans(box)
+}
+
+/** 双语歌词的翻译行同样随演唱进度滚动（按时间比例推进） */
+function applyStripTrans(box: HTMLElement) {
+	const transEl = stripTransEl.value
+	if (!transEl)
+		return
+	const overflow = transEl.scrollWidth - box.clientWidth
+	if (overflow <= 1) {
+		transEl.style.transform = ''
+		return
+	}
+	const line = currentLine.value
+	if (!line)
+		return
+	const last = line.words[line.words.length - 1]
+	const lineEnd = last ? last.start + last.dur : line.time + 4
+	const frac = Math.min(1, Math.max(0, (currentSec - line.time) / Math.max(0.4, lineEnd - line.time)))
+	transEl.style.transform = `translateX(${-(overflow * frac).toFixed(1)}px)`
 }
 
 // ---------- 播放控制 ----------
@@ -739,7 +767,10 @@ onBeforeUnmount(() => {
 						<Icon v-else name="tabler:music" />
 					</div>
 					<div class="now-info">
-						<p class="now-name">
+						<p
+							v-tip="currentSong ? `${currentSong.name} - ${currentSong.artist}` : ''"
+							class="now-name"
+						>
 							{{ currentSong?.name || (status === 'error' ? '歌单加载失败' : status === 'loading' ? '歌单加载中…' : '音乐播放器') }}
 						</p>
 						<p class="now-artist">
@@ -772,6 +803,7 @@ onBeforeUnmount(() => {
 					<ul class="playlist scrollcheck-y scrollbar-hidden">
 						<li v-for="(song, index) in songs" :key="song.id">
 							<button
+								v-tip="`${song.name} - ${song.artist}`"
 								class="song-row"
 								:class="{ active: index === currentIdx }"
 								@click="playAt(index)"
@@ -912,7 +944,7 @@ onBeforeUnmount(() => {
 							</template>
 							<template v-else>{{ currentLine.text }}</template>
 						</span>
-						<span v-if="currentLine.trans" class="strip-trans">{{ currentLine.trans }}</span>
+						<span v-if="currentLine.trans" ref="strip-trans" class="strip-trans">{{ currentLine.trans }}</span>
 					</template>
 					<span v-else class="strip-empty">
 						{{ status === 'loading' ? '歌词加载中…' : '暂无歌词' }}
@@ -1437,7 +1469,7 @@ onBeforeUnmount(() => {
 	transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
 
 	&.open {
-		width: min(15rem, 46vw);
+		width: min(12rem, 38vw);
 		opacity: 1;
 	}
 }
@@ -1445,7 +1477,7 @@ onBeforeUnmount(() => {
 .capsule-lyric {
 	display: block;
 	overflow: hidden;
-	width: min(15rem, 46vw);
+	width: min(12rem, 38vw);
 	padding: 0.15em 0.6em;
 	border-radius: 1rem;
 	background-color: transparent;
@@ -1490,12 +1522,13 @@ onBeforeUnmount(() => {
 
 	.strip-trans {
 		display: block;
-		overflow: hidden;
+		width: max-content;
+		max-width: 100%;
 		font-size: 0.75em;
-		line-height: 1.4;
+		line-height: 1.5;
 		white-space: nowrap;
-		text-overflow: ellipsis;
 		opacity: 0.75;
+		transition: transform 0.45s cubic-bezier(0.33, 1, 0.68, 1);
 	}
 
 	.strip-empty {
@@ -1549,7 +1582,8 @@ onBeforeUnmount(() => {
 		transition: opacity 0.2s;
 	}
 
-	.strip-line {
+	.strip-line,
+	.strip-trans {
 		transition: none;
 	}
 }
