@@ -44,6 +44,8 @@ const STORAGE_PROGRESS = 'music-player.progress'
 const STORAGE_LYRIC = 'music-player.lyrics'
 const PLAYLIST_CACHE = `music-player.playlist-${music.playlistId}`
 const CACHE_TTL = 30 * 60 * 1000
+// 移动端封面环形进度周长（r=18）
+const RING_CIRCUMFERENCE = 2 * Math.PI * 18
 
 type PlayMode = 'list' | 'single' | 'random'
 type PlayerStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -68,6 +70,7 @@ const thumbEl = useTemplateRef<HTMLDivElement>('thumb')
 const curTimeEl = useTemplateRef<HTMLSpanElement>('cur-time')
 const durEl = useTemplateRef<HTMLSpanElement>('dur')
 const lineFillEl = useTemplateRef<HTMLDivElement>('line-fill')
+const ringEl = useTemplateRef<SVGCircleElement>('ring')
 const lyricsEl = useTemplateRef<HTMLDivElement>('lyrics')
 const stripLineEl = useTemplateRef<HTMLSpanElement>('strip-line')
 
@@ -608,6 +611,8 @@ function onTimeUpdate() {
 		curTimeEl.value.textContent = formatTime(currentSec)
 	if (lineFillEl.value && duration > 0)
 		lineFillEl.value.style.transform = `scaleX(${Math.min(1, currentSec / duration)})`
+	if (ringEl.value && duration > 0)
+		ringEl.value.style.strokeDashoffset = String(RING_CIRCUMFERENCE * (1 - Math.min(1, currentSec / duration)))
 
 	// 歌词行与逐字位置只在跨行/跨字时更新
 	let index = -1
@@ -825,6 +830,10 @@ watch(() => currentSong.value, (song) => {
 })
 
 onMounted(() => {
+	if (ringEl.value) {
+		ringEl.value.style.strokeDasharray = String(RING_CIRCUMFERENCE)
+		ringEl.value.style.strokeDashoffset = String(RING_CIRCUMFERENCE)
+	}
 	const savedMode = localStorage.getItem(STORAGE_MODE)
 	if (savedMode === 'list' || savedMode === 'single' || savedMode === 'random')
 		mode.value = savedMode
@@ -1025,6 +1034,11 @@ onBeforeUnmount(() => {
 					<Icon v-else-if="status === 'error'" name="tabler:music-off" />
 					<Icon v-else name="tabler:music" />
 				</div>
+				<!-- 移动端：围绕封面的环形播放进度 -->
+				<svg class="cover-ring" viewBox="0 0 40 40" aria-hidden="true">
+					<circle class="cover-ring-bg" cx="20" cy="20" r="18" />
+					<circle ref="ring" class="cover-ring-fill" cx="20" cy="20" r="18" />
+				</svg>
 			</button>
 
 			<!-- 常驻歌词：详情面板关闭后仍然保留；点击可重新打开详情 -->
@@ -1505,6 +1519,7 @@ onBeforeUnmount(() => {
 }
 
 .capsule-cover {
+	position: relative;
 	padding: 0.15rem;
 
 	.cover-disc {
@@ -1530,6 +1545,30 @@ onBeforeUnmount(() => {
 			height: 100%;
 		}
 	}
+
+	// 移动端环形进度：默认隐藏，窄屏替代底部细线
+	.cover-ring {
+		position: absolute;
+		inset: 0;
+		display: none;
+		width: 100%;
+		height: 100%;
+		fill: none;
+		transform: rotate(-90deg);
+		pointer-events: none;
+
+		.cover-ring-bg {
+			stroke: var(--c-bg-3);
+			stroke-width: 2.5;
+		}
+
+		.cover-ring-fill {
+			stroke: var(--c-primary);
+			stroke-width: 2.5;
+			stroke-linecap: round;
+			transition: stroke-dashoffset 0.2s linear;
+		}
+	}
 }
 
 .capsule-play {
@@ -1544,7 +1583,7 @@ onBeforeUnmount(() => {
 	transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
 
 	&.open {
-		width: min(var(--panel-width), 72vw);
+		width: min(15rem, 46vw);
 		opacity: 1;
 	}
 }
@@ -1552,7 +1591,7 @@ onBeforeUnmount(() => {
 .capsule-lyric {
 	display: block;
 	overflow: hidden;
-	width: min(var(--panel-width), 72vw);
+	width: min(15rem, 46vw);
 	padding: 0.1em 0.6em;
 	border-radius: 1rem;
 	background-color: transparent;
@@ -1573,7 +1612,6 @@ onBeforeUnmount(() => {
 		font-size: 0.85em;
 		line-height: 1.5;
 		white-space: nowrap;
-		text-overflow: ellipsis;
 		color: var(--c-text-1);
 		transition: transform 0.45s cubic-bezier(0.33, 1, 0.68, 1);
 
@@ -1649,6 +1687,26 @@ onBeforeUnmount(() => {
 
 	.strip-line {
 		transition: none;
+	}
+}
+
+@media (max-width: $breakpoint-widescreen) {
+	.music-player {
+		--panel-width: 16rem;
+	}
+
+	// 平板及以下：禁用歌词常驻，胶囊只保留封面 + 播放键
+	.capsule-strip {
+		display: none;
+	}
+
+	// 底部细线进度换成封面外圈的环形进度
+	.capsule-progress {
+		display: none;
+	}
+
+	.capsule-cover .cover-ring {
+		display: block;
 	}
 }
 
