@@ -76,7 +76,7 @@ const blogConfig = {
 		{ src: 'https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js', defer: true },
 		{ src: 'https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js', defer: true },
 		// Twikoo 评论系统
-		{ src: 'https://lib.baomitu.com/twikoo/1.6.44/twikoo.min.js', defer: true },
+		{ src: 'https://registry.npmmirror.com/twikoo/2.0.17/files/dist/twikoo.min.js', defer: true },
 	],
 
 	/** 自己部署的 Twikoo 服务 */

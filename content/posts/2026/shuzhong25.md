@@ -2,12 +2,14 @@
 title: 沭中 · 印象
 description: 沭中在高一新生的眼中是什么样的？关于博主与沭阳高级中学的邂逅。
 date: 2026-04-30 07:56:29
-updated: 2026-06-28 11:01:01
+updated: 2026-11-14 09:09:30
 image: https://gitee.com/hcbug/picture1/raw/master/20260607223300689.webp
 type: story
 categories: [生活]
 tags: [沭中, 学习]
 ---
+
+:alert{icon="tabler:alert-triangle" color="var(--c-accent)" title="该文章已归档，未来不再维护（2026/11/14）"}
 
 **_前言：_**
 
@@ -262,5 +264,3 @@ _没有早读直接上课_
 投稿于2026-06-07（后因**不可抗力**删除）
 
 重新投稿于2026-06-07
-
-**现已停止维护。**
