@@ -62,7 +62,8 @@ onMounted(() => {
 .back-to-top {
 	position: fixed;
 	inset-inline-end: min(1rem, 5%);
-	bottom: calc(min(2rem, 5%) + 4rem);
+	// 抬高到 BlogPanel 之上，避免挡住侧栏/面板组件
+	bottom: calc(min(2rem, 5%) + 6.5rem);
 	display: grid;
 	place-items: center;
 	width: 2.6rem;

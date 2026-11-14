@@ -14,25 +14,14 @@
  * - 进度条支持拖动（预览 + 松手落点）与键盘微调；歌词行点击可跳转到对应时间
  */
 
+import type { LrcLine } from '../../utils/lyric'
+import { parseLrcWithWords, parseYrc } from '../../utils/lyric'
+
 interface Song {
 	id: string
 	name: string
 	artist: string
 	pic?: string
-	lrcUrl?: string
-}
-
-interface WordSeg {
-	text: string
-	start: number
-	dur: number
-}
-
-interface LrcLine {
-	time: number
-	text: string
-	words: WordSeg[]
-	trans?: string
 }
 
 const appConfig = useAppConfig()
@@ -85,6 +74,7 @@ let prevPaneWord = -1
 let prevStripLine = -1
 let dragging = false
 let dragRatio = 0
+let stripObserver: ResizeObserver | undefined
 
 const currentSong = computed(() => songs.value[currentIdx.value])
 const currentLine = computed(() => lrcLines.value[lrcIndex.value])
@@ -139,7 +129,6 @@ async function loadPlaylist() {
 					name: String(item?.name ?? '').trim(),
 					artist: String(item?.artist ?? '').trim(),
 					pic: typeof item?.pic === 'string' ? item.pic : undefined,
-					lrcUrl: typeof item?.lrc === 'string' ? item.lrc : undefined,
 				}))
 				.filter(item => item.id && item.name)
 			if (!list.length)
@@ -223,157 +212,6 @@ async function fetchLyricPayload(song: Song): Promise<LyricPayload | null> {
 	catch {
 		return null
 	}
-}
-
-const CJK_RE = /[\u3040-\u30FF\u3400-\u9FFF\uAC00-\uD7AF]/
-const PUNCT_RE = /[，。、！？…～·；;：:,.'"“”‘’!?()（）<>《》【】[\]&*+=_~-]/
-
-function isPunct(ch: string) {
-	return PUNCT_RE.test(ch)
-}
-
-/** 把一行歌词切分成卡拉OK单元：汉字逐字、西文按词 */
-function tokenizeLine(text: string): string[] {
-	const units: string[] = []
-	let current = ''
-	let currentIsCjk = false
-
-	const flush = () => {
-		if (current)
-			units.push(current)
-		current = ''
-	}
-
-	for (const ch of text) {
-		if (/\s/.test(ch)) {
-			if (current && !currentIsCjk)
-				flush()
-			continue
-		}
-		if (isPunct(ch)) {
-			if (current)
-				current += ch
-			continue
-		}
-		const cjk = CJK_RE.test(ch)
-		if (!current) {
-			current = ch
-			currentIsCjk = cjk
-			continue
-		}
-		if (cjk || currentIsCjk) {
-			flush()
-			current = ch
-			currentIsCjk = cjk
-			continue
-		}
-		current += ch
-	}
-	flush()
-	return units
-}
-
-/** 没有官方逐字时间轴时，按单元权重把行时长摊到每个字/词上 */
-function synthesizeWords(text: string, start: number, dur: number): WordSeg[] {
-	const units = tokenizeLine(text)
-	const weights = units.map((unit) => {
-		const cjkCount = [...unit].filter(ch => CJK_RE.test(ch)).length
-		return cjkCount > 0 ? cjkCount : Math.max(1, Math.ceil(unit.trim().length / 2))
-	})
-	const total = weights.reduce((a, b) => a + b, 0) || 1
-	let cursor = start
-	return units.map((unit, index) => {
-		const seg = { text: unit, start: cursor, dur: (weights[index] ?? 1) / total * dur }
-		cursor += seg.dur
-		return seg
-	})
-}
-
-/** 解析官方 YRC 逐字歌词：[start,dur](字)(字时长)... */
-function parseYrc(yrc: string): LrcLine[] {
-	const lines: LrcLine[] = []
-	for (const raw of yrc.split('\n')) {
-		const head = raw.match(/^\[(\d+),(\d+)\](.*)$/)
-		if (!head)
-			continue
-		const start = Number(head[1]) / 1000
-		const rest = head[3] ?? ''
-		const words: WordSeg[] = []
-		let cursor = start
-		const segRe = /([^(]+)\((\d+)(?:,\d+)?\)/g
-		for (const match of rest.matchAll(segRe)) {
-			const text = match[1]?.trim()
-			const dur = Number(match[2]) / 1000
-			if (text) {
-				words.push({ text, start: cursor, dur })
-				cursor += dur
-			}
-		}
-		if (!words.length) {
-			const text = rest.replace(/[()]/g, '').trim()
-			if (text)
-				words.push({ text, start, dur: Number(head[2]) / 1000 })
-		}
-		if (!words.length)
-			continue
-		lines.push({ time: start, text: words.map(w => w.text).join(''), words })
-	}
-	return lines
-}
-
-/** 解析 LRC 并合成逐字节奏，附带匹配翻译行 */
-function parseLrcWithWords(lrc: string, tlyric?: string): LrcLine[] {
-	const rawLines: { time: number, text: string }[] = []
-	for (const raw of lrc.split('\n')) {
-		const matches = [...raw.matchAll(/\[(\d{1,2}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g)]
-		const text = raw.replace(/\[[^\]]*\]/g, '').trim()
-		if (!matches.length || !text)
-			continue
-		for (const match of matches) {
-			const min = Number(match[1])
-			const sec = Number(match[2])
-			const frac = match[3] ? Number(match[3]) / 10 ** match[3].length : 0
-			rawLines.push({ time: min * 60 + sec + frac, text })
-		}
-	}
-	rawLines.sort((a, b) => a.time - b.time)
-
-	const transLines = tlyric ? parseLrcPlain(tlyric) : []
-	let transCursor = 0
-
-	return rawLines.map((line, index) => {
-		const nextTime = rawLines[index + 1]?.time ?? line.time + 8
-		const dur = Math.min(Math.max(nextTime - line.time, 0.4), 8)
-		let trans: string | undefined
-		while (transCursor < transLines.length && transLines[transCursor]!.time < line.time - 0.35)
-			transCursor++
-		const candidate = transLines[transCursor]
-		if (candidate && candidate.time <= line.time + 0.35) {
-			trans = candidate.text
-			transCursor++
-		}
-		return {
-			time: line.time,
-			text: line.text,
-			words: synthesizeWords(line.text, line.time, dur),
-			trans,
-		}
-	})
-}
-
-function parseLrcPlain(lrc: string): { time: number, text: string }[] {
-	const lines: { time: number, text: string }[] = []
-	for (const raw of lrc.split('\n')) {
-		const match = raw.match(/\[(\d{1,2}):(\d{1,2})(?:[.:](\d{1,3}))?\](.*)/)
-		if (!match)
-			continue
-		const text = match[4]?.trim()
-		if (!text)
-			continue
-		const frac = match[3] ? Number(match[3]) / 10 ** match[3].length : 0
-		lines.push({ time: Number(match[1]) * 60 + Number(match[2]) + frac, text })
-	}
-	return lines.sort((a, b) => a.time - b.time)
 }
 
 async function loadLyrics(song: Song) {
@@ -475,16 +313,18 @@ function updateStripScroll(wordIdx: number) {
 function applyStripScroll(lineEl: HTMLElement, wordIdx: number) {
 	if (wordIdx < 0)
 		return
+	// 溢出量 = 文本宽度 - 外层可视盒宽度（strip-line 自身是 max-content）
+	const box = lineEl.parentElement as HTMLElement | null
 	const cur = lineEl.querySelectorAll<HTMLElement>('.strip-word')[wordIdx]
-	if (!cur)
+	if (!box || !cur)
 		return
-	const overflow = lineEl.scrollWidth - lineEl.clientWidth
+	const overflow = lineEl.scrollWidth - box.clientWidth
 	if (overflow <= 1) {
 		lineEl.style.transform = ''
 		return
 	}
 	// 当前词保持在可视区左侧 45% 附近，随演唱推进平滑左移
-	const target = Math.max(0, Math.min(overflow, cur.offsetLeft + cur.offsetWidth / 2 - lineEl.clientWidth * 0.45))
+	const target = Math.max(0, Math.min(overflow, cur.offsetLeft + cur.offsetWidth / 2 - box.clientWidth * 0.45))
 	lineEl.style.transform = `translateX(${-target}px)`
 }
 
@@ -865,12 +705,25 @@ onMounted(() => {
 	// 离开页面时保存进度（只在此处落盘，装载时不写）
 	useEventListener(window, 'pagehide', persistProgress)
 
+	// 胶囊歌词区尺寸变化（窗口缩放/字号变化）时重算滚动屏溢出量
+	let resizeRaf = 0
+	stripObserver = new ResizeObserver(() => {
+		cancelAnimationFrame(resizeRaf)
+		resizeRaf = requestAnimationFrame(() => {
+			// 强制下一帧重新测量并应用滚动位置
+			prevStripLine = -1
+		})
+	})
+	if (stripLineEl.value)
+		stripObserver.observe(stripLineEl.value)
+
 	loadPlaylist()
 })
 
 onBeforeUnmount(() => {
 	if ('mediaSession' in navigator)
 		navigator.mediaSession.metadata = null
+	stripObserver?.disconnect()
 })
 </script>
 
@@ -1022,7 +875,7 @@ onBeforeUnmount(() => {
 
 	<!-- 胶囊：封面 | 歌词常驻区 | 播放按钮 + 底部细进度线 -->
 	<div class="capsule-area">
-		<div class="capsule" :class="{ 'lyric-mode': lyricMode }">
+		<div class="capsule">
 			<button
 				class="capsule-cover"
 				:aria-label="expanded ? '收起歌单详情' : '打开歌单详情'"
@@ -1577,6 +1430,7 @@ onBeforeUnmount(() => {
 
 /* 常驻歌词区：外层宽度过渡实现胶囊伸缩动画，占胶囊中部 */
 .capsule-strip {
+	// 只裁水平方向：文字纵向完整显示，避免歌词被切掉半截
 	overflow: hidden;
 	width: 0;
 	opacity: 0;
@@ -1592,7 +1446,7 @@ onBeforeUnmount(() => {
 	display: block;
 	overflow: hidden;
 	width: min(15rem, 46vw);
-	padding: 0.1em 0.6em;
+	padding: 0.15em 0.6em;
 	border-radius: 1rem;
 	background-color: transparent;
 	font: inherit;
@@ -1608,9 +1462,10 @@ onBeforeUnmount(() => {
 	.strip-line {
 		position: relative;
 		display: block;
-		overflow: hidden;
+		width: max-content;
+		padding-block: 0.15em;
 		font-size: 0.85em;
-		line-height: 1.5;
+		line-height: 1.6;
 		white-space: nowrap;
 		color: var(--c-text-1);
 		transition: transform 0.45s cubic-bezier(0.33, 1, 0.68, 1);
@@ -1647,6 +1502,15 @@ onBeforeUnmount(() => {
 		display: block;
 		font-size: 0.8em;
 		color: var(--c-text-3);
+	}
+}
+
+/* 现代浏览器只裁水平方向：文字纵向完整显示，避免歌词被切掉半截 */
+@supports (overflow: clip) {
+	.capsule-strip,
+	.capsule-lyric {
+		overflow-x: clip;
+		overflow-y: visible;
 	}
 }
 
