@@ -79,6 +79,7 @@ let keepPlaying = false
 // 歌词页逐字高亮与拖动的非响应式状态（直接操作 DOM）
 let prevPaneLine = -1
 let prevPaneWord = -1
+let prevStripLine = -1
 let dragging = false
 let dragRatio = 0
 
@@ -379,6 +380,7 @@ async function loadLyrics(song: Song) {
 	stripWordIdx.value = -1
 	prevPaneLine = -1
 	prevPaneWord = -1
+	prevStripLine = -1
 	try {
 		const payload = await fetchLyricPayload(song)
 		if (seq !== lrcFetchSeq || !payload)
@@ -447,6 +449,40 @@ function updateStripFill(wordIdx: number) {
 		return
 	const p = Math.min(1, Math.max(0, (currentSec - seg.start) / Math.max(0.1, seg.dur)))
 	el.style.setProperty('--p', `${(p * 100).toFixed(1)}%`)
+}
+
+/**
+ * 胶囊歌词“滚动屏”：歌词超出一行时，随演唱推进横向平移，
+ * 让正在唱的片段始终留在可视区（换行时复位到行首）。
+ */
+function updateStripScroll(wordIdx: number) {
+	const lineEl = stripLineEl.value
+	if (!lineEl)
+		return
+	if (lrcIndex.value !== prevStripLine) {
+		prevStripLine = lrcIndex.value
+		lineEl.style.transform = ''
+		// 等新一行渲染完成后再测量位置
+		requestAnimationFrame(() => applyStripScroll(lineEl, wordIdx))
+		return
+	}
+	applyStripScroll(lineEl, wordIdx)
+}
+
+function applyStripScroll(lineEl: HTMLElement, wordIdx: number) {
+	if (wordIdx < 0)
+		return
+	const cur = lineEl.querySelectorAll<HTMLElement>('.strip-word')[wordIdx]
+	if (!cur)
+		return
+	const overflow = lineEl.scrollWidth - lineEl.clientWidth
+	if (overflow <= 1) {
+		lineEl.style.transform = ''
+		return
+	}
+	// 当前词保持在可视区左侧 45% 附近，随演唱推进平滑左移
+	const target = Math.max(0, Math.min(overflow, cur.offsetLeft + cur.offsetWidth / 2 - lineEl.clientWidth * 0.45))
+	lineEl.style.transform = `translateX(${-target}px)`
 }
 
 // ---------- 播放控制 ----------
@@ -604,6 +640,7 @@ function onTimeUpdate() {
 	// 卡拉OK填充：唱过的词蓝色、当前词随播放进度渐变
 	updateWordFill(lyricsEl.value, index, wordIdx)
 	updateStripFill(wordIdx)
+	updateStripScroll(wordIdx)
 }
 
 function onLoadedMetadata() {
@@ -854,7 +891,7 @@ onBeforeUnmount(() => {
 						aria-label="开关歌词"
 						@click="toggleLyric"
 					>
-						<Icon name="tabler:file-music" />
+						<Icon name="tabler:playlist" />
 					</button>
 					<button class="icon-btn" aria-label="收起播放器" @click="expanded = false">
 						<Icon name="tabler:chevron-down" />
@@ -910,7 +947,7 @@ onBeforeUnmount(() => {
 							<button class="icon-btn" :title="modeTip" aria-label="切换播放模式" @click="cycleMode">
 								<Icon v-if="mode === 'list'" name="tabler:repeat" />
 								<Icon v-else-if="mode === 'single'" name="tabler:repeat-once" />
-								<Icon v-else name="tabler:shuffle" />
+								<Icon v-else name="tabler:arrows-cross" />
 							</button>
 							<button class="icon-btn" aria-label="上一首" @click="step(-1)">
 								<Icon name="tabler:player-skip-back-filled" />
@@ -1041,6 +1078,8 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .music-player {
+	--panel-width: 20rem;
+
 	position: fixed;
 	inset-inline-start: min(1rem, 5%);
 	// 抬高一截，避免盖住左侧栏底部的浅色/深色切换组件
@@ -1063,7 +1102,7 @@ onBeforeUnmount(() => {
 	flex-shrink: 1;
 	flex-direction: column;
 	overflow: hidden;
-	width: 20rem;
+	width: var(--panel-width);
 	min-width: 14rem;
 	max-height: min(70vh, 36rem);
 	border: 1px solid var(--c-border);
@@ -1345,7 +1384,7 @@ onBeforeUnmount(() => {
 .lyric-pane {
 	flex-shrink: 1;
 	overflow: hidden;
-	width: 17rem;
+	width: var(--panel-width);
 	min-width: 10rem;
 	max-height: min(70vh, 36rem);
 	border: 1px solid var(--c-border);
@@ -1505,7 +1544,7 @@ onBeforeUnmount(() => {
 	transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
 
 	&.open {
-		width: min(18rem, 55vw);
+		width: min(var(--panel-width), 72vw);
 		opacity: 1;
 	}
 }
@@ -1513,7 +1552,7 @@ onBeforeUnmount(() => {
 .capsule-lyric {
 	display: block;
 	overflow: hidden;
-	width: min(18rem, 55vw);
+	width: min(var(--panel-width), 72vw);
 	padding: 0.1em 0.6em;
 	border-radius: 1rem;
 	background-color: transparent;
@@ -1528,6 +1567,7 @@ onBeforeUnmount(() => {
 	}
 
 	.strip-line {
+		position: relative;
 		display: block;
 		overflow: hidden;
 		font-size: 0.85em;
@@ -1535,6 +1575,7 @@ onBeforeUnmount(() => {
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		color: var(--c-text-1);
+		transition: transform 0.45s cubic-bezier(0.33, 1, 0.68, 1);
 
 		.strip-word {
 			transition: color 0.2s;
@@ -1605,15 +1646,15 @@ onBeforeUnmount(() => {
 	.capsule-strip {
 		transition: opacity 0.2s;
 	}
+
+	.strip-line {
+		transition: none;
+	}
 }
 
 @media (max-width: $breakpoint-mobile) {
-	.music-panel {
-		width: 15rem;
-	}
-
-	.lyric-pane {
-		width: 12rem;
+	.music-player {
+		--panel-width: 15rem;
 	}
 }
 </style>
