@@ -337,7 +337,7 @@ function applyStripScroll(lineEl: HTMLElement, wordIdx: number) {
 	applyStripTrans(box)
 }
 
-/** 双语歌词的翻译行同样随演唱进度滚动（按时间比例推进） */
+/** 双语歌词的翻译行同样随演唱进度滚动（按时间比例推进，行尾留白避免最后一个字贴边） */
 function applyStripTrans(box: HTMLElement) {
 	const transEl = stripTransEl.value
 	if (!transEl)
@@ -353,7 +353,9 @@ function applyStripTrans(box: HTMLElement) {
 	const last = line.words[line.words.length - 1]
 	const lineEnd = last ? last.start + last.dur : line.time + 4
 	const frac = Math.min(1, Math.max(0, (currentSec - line.time) / Math.max(0.4, lineEnd - line.time)))
-	transEl.style.transform = `translateX(${-(overflow * frac).toFixed(1)}px)`
+	// 与主行一致：允许越界滚动，让行尾最后一个字停在左侧舒适的阅读位置
+	const overscroll = Math.min(box.clientWidth * 0.2, 40)
+	transEl.style.transform = `translateX(${-((overflow + overscroll) * frac).toFixed(1)}px)`
 }
 
 // ---------- 播放控制 ----------
@@ -768,7 +770,7 @@ onBeforeUnmount(() => {
 					</div>
 					<div class="now-info">
 						<p
-							v-tip="currentSong ? `${currentSong.name} - ${currentSong.artist}` : ''"
+							v-tip="currentSong ? { content: `${currentSong.name} - ${currentSong.artist}`, delay: 200 } : ''"
 							class="now-name"
 						>
 							{{ currentSong?.name || (status === 'error' ? '歌单加载失败' : status === 'loading' ? '歌单加载中…' : '音乐播放器') }}
@@ -803,7 +805,7 @@ onBeforeUnmount(() => {
 					<ul class="playlist scrollcheck-y scrollbar-hidden">
 						<li v-for="(song, index) in songs" :key="song.id">
 							<button
-								v-tip="`${song.name} - ${song.artist}`"
+								v-tip="{ content: `${song.name} - ${song.artist}`, delay: 200 }"
 								class="song-row"
 								:class="{ active: index === currentIdx }"
 								@click="playAt(index)"
