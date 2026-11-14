@@ -76,7 +76,7 @@ const blogConfig = {
 		/** Meting API 基础地址，歌单/歌词均通过 JSONP 获取，不受 CORS 限制 */
 		apiBase: 'https://api.injahow.cn/meting/',
 		/** 网易云歌单 ID，换成自己的歌单只需改这里 */
-		playlistId: '8578694173',
+		playlistId: '18003789006',
 		/** 歌单最大加载曲目数（歌单过大时防止请求超时，取歌单前 N 首） */
 		playlistLimit: 300,
 		/** 初始音量 0~1 */
