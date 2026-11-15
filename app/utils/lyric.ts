@@ -24,22 +24,22 @@ function isPunct(ch: string) {
 	return PUNCT_RE.test(ch)
 }
 
-/** 把一行歌词切分成卡拉OK单元：汉字逐字、西文按词 */
+/** 把一行歌词切分成卡拉OK单元：汉字逐字、西文按词（保留词间空格，避免单词粘连） */
 export function tokenizeLine(text: string): string[] {
 	const units: string[] = []
 	let current = ''
 	let currentIsCjk = false
 
-	const flush = () => {
+	const flush = (keepSpace = false) => {
 		if (current)
-			units.push(current)
+			units.push(keepSpace ? `${current} ` : current)
 		current = ''
 	}
 
 	for (const ch of text) {
 		if (/\s/.test(ch)) {
-			if (current && !currentIsCjk)
-				flush()
+			// 空格并入前一个词（中文歌词里有意保留的空格同样处理）
+			flush(true)
 			continue
 		}
 		if (isPunct(ch)) {
@@ -94,11 +94,21 @@ export function parseYrc(yrc: string): LrcLine[] {
 		let cursor = start
 		const segRe = /([^(]+)\((\d+)(?:,\d+)?\)/g
 		for (const match of rest.matchAll(segRe)) {
-			const text = match[1]?.trim()
+			// 保留原始文本（含空格），只跳过完全为空的段
+			const text = match[1] ?? ''
 			const dur = Number(match[2]) / 1000
-			if (text) {
+			if (text.trim()) {
 				words.push({ text, start: cursor, dur })
 				cursor += dur
+			}
+			else if (text) {
+				// 纯空格段也保留时值，但不单独作为高亮单元
+				cursor += dur
+				const last = words[words.length - 1]
+				if (last)
+					last.text += text
+				else
+					words.push({ text, start: cursor - dur, dur })
 			}
 		}
 		if (!words.length) {
